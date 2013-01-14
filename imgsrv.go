@@ -55,13 +55,11 @@ var (
   FileKeywords          = ""
 )
 
-type Image struct {
-  Filename string // name for the given data
+type Info struct {
   Keywords []string // tags
   MimeType string // maybe preserve the type provided?
   Ip string // who uploaded it
   Date time.Time // when?
-  //Name string // not sure that this is different than Filename
 }
 
 /* Check whether this Image filename is on Mongo */
@@ -186,6 +184,10 @@ func getSmallHash() (small_hash string) {
   return fmt.Sprintf("%X", h.Sum(nil))
 }
 
+/*
+  GET /i/
+  GET /i/:name
+*/
 // Show a page of most recent images, and tags, and uploaders ...
 func routeImagesGET(w http.ResponseWriter, r *http.Request) {
   uriChunks := chunkURI(r.URL.Path)
@@ -195,23 +197,22 @@ func routeImagesGET(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  // preliminary checks, if they've passed an image name
   if (len(uriChunks) == 2 && len(uriChunks[1]) > 0) {
-    exists, err := hasImageByFilename(uriChunks[1])
+    query, err := Mgfs.Find(bson.M{"metadata": uriChunks[1] })
+
+    // preliminary checks, if they've passed an image name
     if (err != nil) {
       LogRequest(r,503)
       fmt.Fprintf(w,"Error fetching image: %s", err)
       http.Error(w, "Service Unavailable", 503)
       return
     }
-    if (!exists) {
+    if (query.Count() == 0) {
       LogRequest(r,404)
       http.NotFound(w,r)
       return
     }
-  }
 
-  if (len(uriChunks) == 2 && len(uriChunks[1]) > 0) {
     ext := filepath.Ext(uriChunks[1])
     w.Header().Set("Content-Type", mime.TypeByExtension(ext))
     w.Header().Set("Cache-Control", "max-age=315360000")
@@ -234,6 +235,9 @@ func routeImagesGET(w http.ResponseWriter, r *http.Request) {
   LogRequest(r,200)
 }
 
+/*
+  POST /i/[:name][?k=v&k=v]
+*/
 // Create the file by the name in the path and/or parameter?
 // add keywords from the parameters
 // look for an image in the r.Body
@@ -247,7 +251,7 @@ func routeImagesPOST(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  var i Image
+  var i Info
 
   i.Date = bson.Now()
   i.Ip = r.RemoteAddr
@@ -284,6 +288,7 @@ func routeImagesPOST(w http.ResponseWriter, r *http.Request) {
       i.Filename = fmt.Sprintf("%s%s", str, p_ext)
     }
   }
+
   err := saveImage(i)
   if (err != nil && err.Error() != "Image Filename Exists") {
     file, err := Mgfs.Create(i.Filename)
@@ -310,6 +315,7 @@ func routeImagesPOST(w http.ResponseWriter, r *http.Request) {
   } else {
     log.Printf("%s: %s", err, i.Filename)
   }
+
   io.WriteString(w,
       fmt.Sprintf("%s%s/i/%s\n", r.URL.Scheme, r.URL.Host, i.Filename))
 
