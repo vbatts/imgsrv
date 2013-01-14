@@ -38,7 +38,7 @@ var (
   ServerPort            = DefaultServerPort
   DefaultMongoHost      = "localhost"
   MongoHost             = DefaultMongoHost
-  DefaultMongoDB        = "images"
+  DefaultMongoDB        = "filesrv"
   MongoDB               = DefaultMongoDB
   MongoCollectionData   = "data"
   MongoCollectionImages = "data"
@@ -59,7 +59,7 @@ type Info struct {
   Ip string // who uploaded it
 }
 
-type ImgFile struct {
+type File struct {
   Metadata Info ",omitempty"
   Md5 string
   ChunkSize int
@@ -79,20 +79,38 @@ func hasImageByFilename(filename string) (exists bool, err error) {
   return exists, nil
 }
 
-func getImage(filename string) (img ImgFile, err error) {
-  err = gfs.Find(bson.M{"filename":filename}).One(&img)
+func hasImageByMd5(md5 string) (exists bool, err error) {
+  c, err := gfs.Find(bson.M{"md5": md5 }).Count()
   if (err != nil) {
-    return img, err
+    return false, err
   }
-  return img, nil
+  exists = (c > 0)
+  return exists, nil
+}
+
+func hasImageByKeyword(keyword string) (exists bool, err error) {
+  c, err := gfs.Find(bson.M{"metadata": bson.M{"keywords": keyword} }).Count()
+  if (err != nil) {
+    return false, err
+  }
+  exists = (c > 0)
+  return exists, nil
+}
+
+func getImageByFilename(filename string) (this_file File, err error) {
+  err = gfs.Find(bson.M{"filename":filename}).One(&this_file)
+  if (err != nil) {
+    return this_file, err
+  }
+  return this_file, nil
 }
 
 
 /* return a <a href/> for a given filename 
    and root is the relavtive base of the explicit link.
 */
-func linkToImage(root string, filename string) (html string) {
-  return fmt.Sprintf("<a href='%s/i/%s'>%s</a>",
+func linkToFile(root string, filename string) (html string) {
+  return fmt.Sprintf("<a href='%s/f/%s'>%s</a>",
                 root,
                 filename,
                 filename)
@@ -182,11 +200,11 @@ func returnErr(w http.ResponseWriter, r *http.Request, e error) {
 }
 
 /*
-  GET /i/
-  GET /i/:name
+  GET /f/
+  GET /f/:name
 */
 // Show a page of most recent images, and tags, and uploaders ...
-func routeImagesGET(w http.ResponseWriter, r *http.Request) {
+func routeFilesGET(w http.ResponseWriter, r *http.Request) {
   uriChunks := chunkURI(r.URL.Path)
   if ( len(uriChunks) > 2 ) {
     LogRequest(r,404)
@@ -196,7 +214,7 @@ func routeImagesGET(w http.ResponseWriter, r *http.Request) {
 
   if (len(uriChunks) == 2 && len(uriChunks[1]) > 0) {
     log.Printf("Searching for [%s] ...", uriChunks[1])
-    query := gfs.Find(bson.M{"metadata": bson.M{"filename": uriChunks[1] } })
+    query := gfs.Find(bson.M{"filename": uriChunks[1] })
 
     c, err := query.Count()
     // preliminary checks, if they've passed an image name
@@ -231,12 +249,12 @@ func routeImagesGET(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-  POST /i/[:name][?k=v&k=v]
+  POST /f/[:name][?k=v&k=v]
 */
 // Create the file by the name in the path and/or parameter?
 // add keywords from the parameters
 // look for an image in the r.Body
-func routeImagesPOST(w http.ResponseWriter, r *http.Request) {
+func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   uriChunks := chunkURI(r.URL.Path)
   if (len(uriChunks) > 2 &&
       ((len(uriChunks) == 2 && len(uriChunks[1]) == 0) &&
@@ -311,31 +329,31 @@ func routeImagesPOST(w http.ResponseWriter, r *http.Request) {
   }
 
   io.WriteString(w,
-      fmt.Sprintf("%s%s/i/%s\n", r.URL.Scheme, r.URL.Host, filename))
+      fmt.Sprintf("%s%s/f/%s\n", r.URL.Scheme, r.URL.Host, filename))
 
   LogRequest(r,200)
 }
 
-func routeImagesPUT(w http.ResponseWriter, r *http.Request) {
+func routeFilesPUT(w http.ResponseWriter, r *http.Request) {
   // update the file by the name in the path and/or parameter?
   // update/add keywords from the parameters
   // look for an image in the r.Body
 }
 
-func routeImagesDELETE(w http.ResponseWriter, r *http.Request) {
+func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
   // delete the name in the path and/or parameter?
 }
 
-func routeImages(w http.ResponseWriter, r *http.Request) {
+func routeFiles(w http.ResponseWriter, r *http.Request) {
   switch {
   case r.Method == "GET":
-    routeImagesGET(w,r)
+    routeFilesGET(w,r)
   case r.Method == "PUT":
-    routeImagesPUT(w,r)
+    routeFilesPUT(w,r)
   case r.Method == "POST":
-    routeImagesPOST(w,r)
+    routeFilesPOST(w,r)
   case r.Method == "DELETE":
-    routeImagesDELETE(w,r)
+    routeFilesDELETE(w,r)
   default:
     LogRequest(r,404)
     http.NotFound(w,r)
@@ -352,12 +370,12 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
   // Show a page of most recent images, and tags, and uploaders ...
 
   w.Header().Set("Content-Type", "text/html")
-  var img ImgFile
+  var this_file File
   iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
   fmt.Fprintf(w, "<ul>\n")
-  for iter.Next(&img) {
-    log.Println(img.Filename)
-    fmt.Fprintf(w, "<li>%s</li>\n", linkToImage("", img.Filename))
+  for iter.Next(&this_file) {
+    log.Println(this_file.Filename)
+    fmt.Fprintf(w, "<li>%s</li>\n", linkToFile("", this_file.Filename))
   }
   fmt.Fprintf(w, "</ul>\n")
 }
@@ -370,14 +388,14 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
   }
 
   w.Header().Set("Content-Type", "text/html")
-  var img ImgFile
+  var this_file File
 
   // Show a page of all the images
   iter := gfs.Find(nil).Iter()
   fmt.Fprintf(w, "<ul>\n")
-  for iter.Next(&img) {
-    log.Println(img.Filename)
-    fmt.Fprintf(w, "<li>%s</li>\n", linkToImage("", img.Filename))
+  for iter.Next(&this_file) {
+    log.Println(this_file.Filename)
+    fmt.Fprintf(w, "<li>%s</li>\n", linkToFile("", this_file.Filename))
   }
   fmt.Fprintf(w, "</ul>\n")
 }
@@ -405,23 +423,23 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
   params := parseRawQuery(r.URL.RawQuery)
   log.Printf("K: params: %s", params)
 
-  var img ImgFile
+  var this_file File
   if (len(uriChunks) == 1) {
     // show a sorted list of tag name links
     iter := gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Sort("$natural").Limit(100).Iter()
     fmt.Fprintf(w, "<li>\n")
-    for iter.Next(&img) {
-      log.Println(img.Filename)
-      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToImage("", img.Filename))
+    for iter.Next(&this_file) {
+      log.Println(this_file.Filename)
+      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToFile("", this_file.Filename))
     }
     fmt.Fprintf(w, "</li>\n")
   } else if (len(uriChunks) == 2) {
     iter := gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Limit(10).Iter()
 
     fmt.Fprintf(w, "<li>\n")
-    for iter.Next(&img) {
-      log.Println(img.Filename)
-      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToImage("", img.Filename))
+    for iter.Next(&this_file) {
+      log.Println(this_file.Filename)
+      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToFile("", this_file.Filename))
     }
     fmt.Fprintf(w, "</li>\n")
   } else if (uriChunks[2] == "r") {
@@ -458,9 +476,10 @@ func runServer(ip, port string) {
 
   http.HandleFunc("/", routeRoot)
   http.HandleFunc("/all", routeAll)
-  http.HandleFunc("/i/", routeImages)
+  http.HandleFunc("/f/", routeFiles)
   http.HandleFunc("/k/", routeKeywords)
   http.HandleFunc("/ip/", routeIPs)
+  //http.HandleFunc("/md5/", routeMD5s)
 
   log.Printf("Serving on %s ...", addr)
   log.Fatal(http.ListenAndServe(addr, nil))
