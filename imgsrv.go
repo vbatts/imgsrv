@@ -25,6 +25,7 @@ import (
   "crypto/md5"
   "hash/adler32"
   "io"
+  "math/rand"
 )
 
 var (
@@ -40,8 +41,6 @@ var (
   MongoHost             = DefaultMongoHost
   DefaultMongoDB        = "filesrv"
   MongoDB               = DefaultMongoDB
-  MongoCollectionData   = "data"
-  MongoCollectionImages = "data"
 
   mongo_session *mgo.Session
   images_db *mgo.Database
@@ -57,6 +56,7 @@ var (
 type Info struct {
   Keywords []string // tags
   Ip string // who uploaded it
+  Random int64
 }
 
 type File struct {
@@ -69,8 +69,12 @@ type File struct {
   ContentType string "contentType,omitempty"
 }
 
-/* Check whether this Image filename is on Mongo */
-func hasImageByFilename(filename string) (exists bool, err error) {
+func rand64() int64 {
+  return rand.Int63()
+}
+
+/* Check whether this File filename is on Mongo */
+func hasFileByFilename(filename string) (exists bool, err error) {
   c, err := gfs.Find(bson.M{"filename": filename}).Count()
   if (err != nil) {
     return false, err
@@ -79,7 +83,7 @@ func hasImageByFilename(filename string) (exists bool, err error) {
   return exists, nil
 }
 
-func hasImageByMd5(md5 string) (exists bool, err error) {
+func hasFileByMd5(md5 string) (exists bool, err error) {
   c, err := gfs.Find(bson.M{"md5": md5 }).Count()
   if (err != nil) {
     return false, err
@@ -88,7 +92,7 @@ func hasImageByMd5(md5 string) (exists bool, err error) {
   return exists, nil
 }
 
-func hasImageByKeyword(keyword string) (exists bool, err error) {
+func hasFileByKeyword(keyword string) (exists bool, err error) {
   c, err := gfs.Find(bson.M{"metadata": bson.M{"keywords": keyword} }).Count()
   if (err != nil) {
     return false, err
@@ -97,8 +101,16 @@ func hasImageByKeyword(keyword string) (exists bool, err error) {
   return exists, nil
 }
 
-func getImageByFilename(filename string) (this_file File, err error) {
+func getFileByFilename(filename string) (this_file File, err error) {
   err = gfs.Find(bson.M{"filename":filename}).One(&this_file)
+  if (err != nil) {
+    return this_file, err
+  }
+  return this_file, nil
+}
+
+func getFileRandom(filename string) (this_file File, err error) {
+  err = gfs.Find(bson.M{"random": bson.M{"$gt" : rand64() } }).One(&this_file)
   if (err != nil) {
     return this_file, err
   }
@@ -192,9 +204,10 @@ func getSmallHash() (small_hash string) {
   return fmt.Sprintf("%X", h.Sum(nil))
 }
 
-func returnErr(w http.ResponseWriter, r *http.Request, e error) {
+func serverErr(w http.ResponseWriter, r *http.Request, e error) {
+      log.Printf("Error: %s", e)
       LogRequest(r,503)
-      fmt.Fprintf(w,"Error fetching image: %s", e)
+      fmt.Fprintf(w,"Error: %s", e)
       http.Error(w, "Service Unavailable", 503)
       return
 }
@@ -219,7 +232,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
     c, err := query.Count()
     // preliminary checks, if they've passed an image name
     if (err != nil) {
-      returnErr(w,r,err)
+      serverErr(w,r,err)
       return
     }
     log.Printf("Results for [%s] = %d", uriChunks[1], c)
@@ -236,7 +249,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 
     file, err := gfs.Open(uriChunks[1])
     if (err != nil) {
-      returnErr(w,r,err)
+      serverErr(w,r,err)
       return
     }
 
@@ -267,6 +280,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   var filename string
   info := Info{
     Ip: r.RemoteAddr,
+    Random: rand64(),
   }
 
   if (len(uriChunks) == 2 && len(uriChunks[1]) != 0) {
@@ -302,16 +316,16 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
     }
   }
 
-  exists, err := hasImageByFilename(filename)
+  exists, err := hasFileByFilename(filename)
   if (err == nil && !exists) {
     file, err := gfs.Create(filename)
     if (err != nil) {
-      returnErr(w,r,err)
+      serverErr(w,r,err)
       return
     }
     n, err := io.Copy(file, r.Body)
     if (err != nil) {
-      returnErr(w,r,err)
+      serverErr(w,r,err)
       return
     }
     if (n != r.ContentLength) {
@@ -324,7 +338,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   } else if (exists) {
     log.Printf("[%s] already exists", filename)
   } else {
-    returnErr(w,r,err)
+    serverErr(w,r,err)
     return
   }
 
@@ -338,9 +352,33 @@ func routeFilesPUT(w http.ResponseWriter, r *http.Request) {
   // update the file by the name in the path and/or parameter?
   // update/add keywords from the parameters
   // look for an image in the r.Body
+  LogRequest(r,200)
 }
 
 func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
+  uriChunks := chunkURI(r.URL.Path)
+  if ( len(uriChunks) > 2 ) {
+    LogRequest(r,404)
+    http.NotFound(w,r)
+    return
+  } else if (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
+  }
+  exists, err := hasFileByFilename(uriChunks[1])
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+  if (exists) {
+    err = gfs.Remove(uriChunks[1])
+    if (err != nil) {
+      serverErr(w,r,err)
+      return
+    }
+    LogRequest(r,200)
+  } else {
+    LogRequest(r,404)
+    http.NotFound(w,r)
+  }
   // delete the name in the path and/or parameter?
 }
 
@@ -370,14 +408,10 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
   // Show a page of most recent images, and tags, and uploaders ...
 
   w.Header().Set("Content-Type", "text/html")
-  var this_file File
-  iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
-  fmt.Fprintf(w, "<ul>\n")
-  for iter.Next(&this_file) {
-    log.Println(this_file.Filename)
-    fmt.Fprintf(w, "<li>%s</li>\n", linkToFile("", this_file.Filename))
-  }
-  fmt.Fprintf(w, "</ul>\n")
+  //iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
+  iter := gfs.Find(nil).Sort("-uploadDate").Limit(10).Iter()
+  writeList(w, iter)
+  LogRequest(r,200)
 }
 
 func routeAll(w http.ResponseWriter, r *http.Request) {
@@ -388,16 +422,11 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
   }
 
   w.Header().Set("Content-Type", "text/html")
-  var this_file File
 
   // Show a page of all the images
   iter := gfs.Find(nil).Iter()
-  fmt.Fprintf(w, "<ul>\n")
-  for iter.Next(&this_file) {
-    log.Println(this_file.Filename)
-    fmt.Fprintf(w, "<li>%s</li>\n", linkToFile("", this_file.Filename))
-  }
-  fmt.Fprintf(w, "</ul>\n")
+  writeList(w, iter)
+  LogRequest(r,200)
 }
 
 /*
@@ -423,30 +452,45 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
   params := parseRawQuery(r.URL.RawQuery)
   log.Printf("K: params: %s", params)
 
-  var this_file File
+  var iter *mgo.Iter
   if (len(uriChunks) == 1) {
     // show a sorted list of tag name links
-    iter := gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Sort("$natural").Limit(100).Iter()
-    fmt.Fprintf(w, "<li>\n")
-    for iter.Next(&this_file) {
-      log.Println(this_file.Filename)
-      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToFile("", this_file.Filename))
-    }
-    fmt.Fprintf(w, "</li>\n")
+    iter = gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Sort("$natural").Limit(100).Iter()
   } else if (len(uriChunks) == 2) {
-    iter := gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Limit(10).Iter()
-
-    fmt.Fprintf(w, "<li>\n")
-    for iter.Next(&this_file) {
-      log.Println(this_file.Filename)
-      fmt.Fprintf(w, "<ul>%s</ul>\n", linkToFile("", this_file.Filename))
-    }
-    fmt.Fprintf(w, "</li>\n")
+    iter = gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Limit(10).Iter()
   } else if (uriChunks[2] == "r") {
     // TODO determine how to show a random image by keyword ...
+    log.Println("random isn't built yet")
+    LogRequest(r,404)
+    return
   }
 
+  writeList(w, iter)
 
+  LogRequest(r,200)
+}
+
+func writeList(w http.ResponseWriter, iter *mgo.Iter) {
+  var this_file File
+  fmt.Fprintf(w, "<ul>\n")
+  for iter.Next(&this_file) {
+    log.Println(this_file.Filename)
+    fmt.Fprintf(w, "<li>%s - %s</li>\n",
+        linkToFile("", this_file.Filename),
+        this_file.UploadDate.String())
+  }
+  fmt.Fprintf(w, "</ul>\n")
+}
+
+// Show a page of all the uploader's IPs, and the images
+func routeExt(w http.ResponseWriter, r *http.Request) {
+  if (r.Method != "GET") {
+    LogRequest(r,404)
+    http.NotFound(w,r)
+    return
+  }
+
+  LogRequest(r,200)
 }
 
 // Show a page of all the uploader's IPs, and the images
@@ -456,6 +500,8 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
     http.NotFound(w,r)
     return
   }
+
+  LogRequest(r,200)
 }
 
 func initMongo() {
@@ -479,6 +525,7 @@ func runServer(ip, port string) {
   http.HandleFunc("/f/", routeFiles)
   http.HandleFunc("/k/", routeKeywords)
   http.HandleFunc("/ip/", routeIPs)
+  http.HandleFunc("/ext/", routeExt)
   //http.HandleFunc("/md5/", routeMD5s)
 
   log.Printf("Serving on %s ...", addr)
