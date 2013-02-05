@@ -41,6 +41,10 @@ var (
   MongoHost             = DefaultMongoHost
   DefaultMongoDB        = "filesrv"
   MongoDB               = DefaultMongoDB
+  DefaultMongoUsername  = ""
+  MongoUsername         = DefaultMongoUsername
+  DefaultMongoPassword  = ""
+  MongoPassword         = DefaultMongoPassword
 
   mongo_session *mgo.Session
   images_db *mgo.Database
@@ -109,8 +113,15 @@ func getFileByFilename(filename string) (this_file File, err error) {
   return this_file, nil
 }
 
-func getFileRandom(filename string) (this_file File, err error) {
-  err = gfs.Find(bson.M{"random": bson.M{"$gt" : rand64() } }).One(&this_file)
+func getFileRandom() (this_file File, err error) {
+  r := rand64()
+  err = gfs.Find(bson.M{"random": bson.M{"$gt" : r } }).One(&this_file)
+  if (err != nil) {
+    return this_file, err
+  }
+  if (len(this_file.Md5) == 0) {
+    err = gfs.Find(bson.M{"random": bson.M{"$lt" : r } }).One(&this_file)
+  }
   if (err != nil) {
     return this_file, err
   }
@@ -475,9 +486,9 @@ func writeList(w http.ResponseWriter, iter *mgo.Iter) {
   fmt.Fprintf(w, "<ul>\n")
   for iter.Next(&this_file) {
     log.Println(this_file.Filename)
-    fmt.Fprintf(w, "<li>%s - %s</li>\n",
+    fmt.Fprintf(w, "<li>%s - %d</li>\n",
         linkToFile("", this_file.Filename),
-        this_file.UploadDate.String())
+        this_file.UploadDate.Year())
   }
   fmt.Fprintf(w, "</ul>\n")
 }
@@ -510,6 +521,12 @@ func initMongo() {
     log.Panic(err)
   }
   images_db = mongo_session.DB(MongoDB)
+  if (len(MongoUsername) > 0 && len(MongoPassword) > 0) {
+    err = images_db.Login(MongoUsername, MongoPassword)
+    if (err != nil) {
+      log.Panic(err)
+    }
+  }
 	gfs = images_db.GridFS("fs")
 }
 
@@ -562,6 +579,14 @@ func init() {
        "mongo-db",
        MongoDB,
        "Mongo db to connect to ('mongodb' in the config)")
+  flag.StringVar(&MongoUsername,
+       "mongo-username",
+       MongoUsername,
+       "Mongo username to auth with (if needed) ('mongousername' in the config)")
+  flag.StringVar(&MongoPassword,
+       "mongo-password",
+       MongoPassword,
+       "Mongo password to auth with (if needed) ('mongopassword' in the config)")
 
   /* Client-side */
   flag.StringVar(&RemoteHost,
@@ -596,6 +621,8 @@ func loadConfiguration(filename string) (c *goconf.ConfigFile) {
   cServerPort, _ := c.GetString("", "port")
   cMongoHost, _ := c.GetString("", "mongohost")
   cMongoDB, _ := c.GetString("", "mongodb")
+  cMongoUsername, _ := c.GetString("", "mongousername")
+  cMongoPassword, _ := c.GetString("", "mongopassword")
   cRemoteHost, _ := c.GetString("", "remotehost")
 
   // Only set variables from config file,
@@ -614,6 +641,12 @@ func loadConfiguration(filename string) (c *goconf.ConfigFile) {
   }
   if (DefaultMongoDB == MongoDB && len(cMongoDB) > 0) {
     MongoDB = cMongoDB
+  }
+  if (DefaultMongoUsername == MongoUsername && len(cMongoUsername) > 0) {
+    MongoUsername = cMongoUsername
+  }
+  if (DefaultMongoPassword == MongoPassword && len(cMongoPassword) > 0) {
+    MongoPassword = cMongoPassword
   }
   if (DefaultRemoteHost == RemoteHost && len(cRemoteHost) > 0) {
     RemoteHost = cRemoteHost
