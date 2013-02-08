@@ -21,7 +21,8 @@ import (
   "time"
   //"errors"
   "mime"
-
+  "bufio"
+  "net/url"
   "crypto/tls"
   "crypto/md5"
   "hash/adler32"
@@ -132,6 +133,24 @@ func getFileRandom() (this_file File, err error) {
 }
 
 
+func putFileFromPath(host, filename string) (path string, err error) {
+  ext := filepath.Ext(filename)
+  file, err := os.Open(filename)
+  if (err != nil) {
+    return
+  }
+  resp, err := http.Post(host, mime.TypeByExtension(ext) , bufio.NewReader(file))
+  //defer resp.Body.Close()
+  if (err != nil) {
+    return
+  }
+  bytes, err := ioutil.ReadAll(resp.Body)
+  if (err != nil) {
+    return
+  }
+  return string(bytes), nil
+}
+
 func fetchFileFromURL(url string) (filename string, err error) {
   var t time.Time
 
@@ -155,12 +174,11 @@ func fetchFileFromURL(url string) (filename string, err error) {
       return
     }
   } else {
+    log.Println("Last-Modified not present. Using current time")
     t = time.Now()
   }
   _, url_filename := filepath.Split(url)
 
-  log.Println(t)
-  log.Println(url_filename)
   log.Println(resp)
 
   bytes, err := ioutil.ReadAll(resp.Body)
@@ -171,9 +189,10 @@ func fetchFileFromURL(url string) (filename string, err error) {
   if (err != nil) {
     return
   }
-  filename = filepath.Join(os.TempDir(), url_filename)
+  err = os.Chtimes(filepath.Join(os.TempDir(), url_filename), t, t)
 
-  return
+  // lastly, return
+  return filepath.Join(os.TempDir(), url_filename), nil
 }
 
 /* return a <a href/> for a given filename 
@@ -664,14 +683,14 @@ func loadConfiguration(filename string) (c *goconf.ConfigFile) {
     return goconf.NewConfigFile()
   }
 
-  cRunAsServer, _ := c.GetBool("", "server")
-  cServerIp, _ := c.GetString("", "ip")
-  cServerPort, _ := c.GetString("", "port")
-  cMongoHost, _ := c.GetString("", "mongohost")
-  cMongoDB, _ := c.GetString("", "mongodb")
-  cMongoUsername, _ := c.GetString("", "mongousername")
-  cMongoPassword, _ := c.GetString("", "mongopassword")
-  cRemoteHost, _ := c.GetString("", "remotehost")
+  cRunAsServer, _ := c.GetBool("default", "server")
+  cServerIp, _ := c.GetString("default", "ip")
+  cServerPort, _ := c.GetString("default", "port")
+  cMongoHost, _ := c.GetString("default", "mongohost")
+  cMongoDB, _ := c.GetString("default", "mongodb")
+  cMongoUsername, _ := c.GetString("default", "mongousername")
+  cMongoPassword, _ := c.GetString("default", "mongopassword")
+  cRemoteHost, _ := c.GetString("default", "remotehost")
 
   // Only set variables from config file,
   // if they weren't passed as flags
@@ -717,18 +736,41 @@ func main() {
   if (len(FetchUrl) > 0) {
     file, err := fetchFileFromURL(FetchUrl)
     if (err != nil) {
-      log.Panic(err)
+      log.Println(err)
+      return
     }
-    // XXX
     log.Println(file)
   } else if (RunAsServer) {
     log.Printf("%s", ServerIP)
     runServer(ServerIP,ServerPort)
   } else {
-    if (len(PutFile) == 0 && len(flag.Args()) == 0) {
-      log.Println("Please provide files to be uploaded!")
+    if (len(RemoteHost) == 0) {
+      log.Println("Please provide a remotehost!")
+      return
     }
-    log.Printf("%d", len(PutFile))
+    if (len(PutFile) == 0 ) { //&& len(flag.Args()) == 0) {
+      log.Println("Please provide files to be uploaded!")
+      return
+    }
+    _,basename := filepath.Split(PutFile)
+    queryParams := "?filename=" + basename
+    if (len(FileKeywords) > 0) {
+      queryParams = queryParams + "&keywords=" + FileKeywords
+    } else {
+      log.Println("WARN: you didn't provide any keywords :-(")
+    }
+    url, err := url.Parse(RemoteHost + "/f/" + queryParams)
+    if (err != nil) {
+      log.Println(err)
+      return
+    }
+    log.Printf("POSTing: %s\n", url.String())
+    url_path, err := putFileFromPath(url.String(), PutFile)
+    if (err != nil) {
+      log.Println(err)
+      return
+    }
+    log.Printf("New Image!: %s%s\n", RemoteHost, url_path)
   }
 }
 
