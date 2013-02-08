@@ -22,9 +22,11 @@ import (
   //"errors"
   "mime"
 
+  "crypto/tls"
   "crypto/md5"
   "hash/adler32"
   "io"
+  "io/ioutil"
   "math/rand"
 )
 
@@ -33,6 +35,7 @@ var (
 
   DefaultRunAsServer    = false
   RunAsServer           = DefaultRunAsServer
+
   DefaultServerIP       = "0.0.0.0"
   ServerIP              = DefaultServerIP
   DefaultServerPort     = "7777"
@@ -52,8 +55,8 @@ var (
 
   DefaultRemoteHost     = ""
   RemoteHost            = DefaultRemoteHost
-  GetFile               = ""
   PutFile               = ""
+  FetchUrl              = ""
   FileKeywords          = ""
 )
 
@@ -128,6 +131,50 @@ func getFileRandom() (this_file File, err error) {
   return this_file, nil
 }
 
+
+func fetchFileFromURL(url string) (filename string, err error) {
+  var t time.Time
+
+  tr := &http.Transport{
+    TLSClientConfig: &tls.Config{ InsecureSkipVerify: true },
+  }
+  client := &http.Client{
+    //CheckRedirect: redirectPolicyFunc,
+    Transport: tr,
+  }
+  resp, err := client.Get(url)
+  defer resp.Body.Close()
+  if (err != nil) {
+    return
+  }
+
+  mtime := resp.Header.Get("last-modified")
+  if (len(mtime) > 0) {
+    t, err = time.Parse(http.TimeFormat, mtime)
+    if (err != nil) {
+      return
+    }
+  } else {
+    t = time.Now()
+  }
+  _, url_filename := filepath.Split(url)
+
+  log.Println(t)
+  log.Println(url_filename)
+  log.Println(resp)
+
+  bytes, err := ioutil.ReadAll(resp.Body)
+  if (err != nil) {
+    return
+  }
+  err = ioutil.WriteFile(filepath.Join(os.TempDir(), url_filename), bytes, 0644)
+  if (err != nil) {
+    return
+  }
+  filename = filepath.Join(os.TempDir(), url_filename)
+
+  return
+}
 
 /* return a <a href/> for a given filename 
    and root is the relavtive base of the explicit link.
@@ -589,14 +636,15 @@ func init() {
        "Mongo password to auth with (if needed) ('mongopassword' in the config)")
 
   /* Client-side */
+  flag.StringVar(&FetchUrl,
+       "fetch",
+       FetchUrl,
+       "Just fetch the file from this url")
+
   flag.StringVar(&RemoteHost,
        "remotehost",
        RemoteHost,
        "Remote host to get/put files on ('remotehost' in the config)")
-  flag.StringVar(&GetFile,
-       "get",
-       GetFile,
-       "Fetch file on remote server (needs -remotehost)")
   flag.StringVar(&PutFile,
        "put",
        PutFile,
@@ -666,14 +714,21 @@ func main() {
   // to override variables
   loadConfiguration(ConfigFile)
 
-  if (RunAsServer) {
+  if (len(FetchUrl) > 0) {
+    file, err := fetchFileFromURL(FetchUrl)
+    if (err != nil) {
+      log.Panic(err)
+    }
+    // XXX
+    log.Println(file)
+  } else if (RunAsServer) {
+    log.Printf("%s", ServerIP)
     runServer(ServerIP,ServerPort)
+  } else {
+    if (len(PutFile) == 0 && len(flag.Args()) == 0) {
+      log.Println("Please provide files to be uploaded!")
+    }
+    log.Printf("%d", len(PutFile))
   }
-
-  log.Printf("%s", ServerIP)
-  log.Printf("%d", len(GetFile))
-
-  //log.Printf("Good Morning!")
-  //log.Printf("%x", getMd5FromString("Good Morning!"))
 }
 
