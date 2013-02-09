@@ -1,1 +1,17 @@
 This app is now running at http://file-vb.openshift.devlab.phx1.redhat.com/
+
+
+== Building
+
+Either 
+
+  git clone git://git.corp.redhat.com/srv/git/dev/towers/engineering/go/imgsrv.git
+  cd imgsrv
+  go build
+  ls -l imgsrv
+
+or
+
+  go get git://git.corp.redhat.com/srv/git/dev/towers/engineering/go/imgsrv.git
+  (TODO double check this)
+
