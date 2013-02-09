@@ -14,7 +14,7 @@ func (c *Config) GetBool(option string) (value bool) {
   default: value = false
   case "yes", "on", "true": value = true
   }
-  return 
+  return
 }
 
 func (c *Config) GetString(option string) (value string) {

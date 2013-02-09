@@ -8,26 +8,22 @@ package main
 */
 
 import (
-  "log"
-  "labix.org/v2/mgo"
-  "labix.org/v2/mgo/bson"
-  "net/http"
+  "crypto/md5"
   "flag"
   "fmt"
-  "path/filepath"
-  "os"
-  "strings"
-  "time"
-  //"errors"
-  "mime"
-  "bufio"
-  "net/url"
-  "crypto/tls"
-  "crypto/md5"
   "hash/adler32"
   "io"
-  "io/ioutil"
+  "labix.org/v2/mgo"
+  "labix.org/v2/mgo/bson"
+  "log"
   "math/rand"
+  "mime"
+  "net/http"
+  "net/url"
+  "os"
+  "path/filepath"
+  "strings"
+  "time"
 )
 
 var (
@@ -76,100 +72,6 @@ type File struct {
   ContentType string "contentType,omitempty"
 }
 
-func rand64() int64 {
-  return rand.Int63()
-}
-
-/* Check whether this File filename is on Mongo */
-func hasFileByFilename(filename string) (exists bool, err error) {
-  c, err := gfs.Find(bson.M{"filename": filename}).Count()
-  if (err != nil) {
-    return false, err
-  }
-  exists = (c > 0)
-  return exists, nil
-}
-
-func hasFileByMd5(md5 string) (exists bool, err error) {
-  c, err := gfs.Find(bson.M{"md5": md5 }).Count()
-  if (err != nil) {
-    return false, err
-  }
-  exists = (c > 0)
-  return exists, nil
-}
-
-func hasFileByKeyword(keyword string) (exists bool, err error) {
-  c, err := gfs.Find(bson.M{"metadata": bson.M{"keywords": keyword} }).Count()
-  if (err != nil) {
-    return false, err
-  }
-  exists = (c > 0)
-  return exists, nil
-}
-
-
-func putFileFromPath(host, filename string) (path string, err error) {
-  ext := filepath.Ext(filename)
-  file, err := os.Open(filename)
-  if (err != nil) {
-    return
-  }
-  resp, err := http.Post(host, mime.TypeByExtension(ext) , bufio.NewReader(file))
-  //defer resp.Body.Close()
-  if (err != nil) {
-    return
-  }
-  bytes, err := ioutil.ReadAll(resp.Body)
-  if (err != nil) {
-    return
-  }
-  return string(bytes), nil
-}
-
-func fetchFileFromURL(url string) (filename string, err error) {
-  var t time.Time
-
-  tr := &http.Transport{
-    TLSClientConfig: &tls.Config{ InsecureSkipVerify: true },
-  }
-  client := &http.Client{
-    //CheckRedirect: redirectPolicyFunc,
-    Transport: tr,
-  }
-  resp, err := client.Get(url)
-  defer resp.Body.Close()
-  if (err != nil) {
-    return
-  }
-
-  mtime := resp.Header.Get("last-modified")
-  if (len(mtime) > 0) {
-    t, err = time.Parse(http.TimeFormat, mtime)
-    if (err != nil) {
-      return
-    }
-  } else {
-    log.Println("Last-Modified not present. Using current time")
-    t = time.Now()
-  }
-  _, url_filename := filepath.Split(url)
-
-  log.Println(resp)
-
-  bytes, err := ioutil.ReadAll(resp.Body)
-  if (err != nil) {
-    return
-  }
-  err = ioutil.WriteFile(filepath.Join(os.TempDir(), url_filename), bytes, 0644)
-  if (err != nil) {
-    return
-  }
-  err = os.Chtimes(filepath.Join(os.TempDir(), url_filename), t, t)
-
-  // lastly, return
-  return filepath.Join(os.TempDir(), url_filename), nil
-}
 
 /* return a <a href/> for a given filename 
    and root is the relavtive base of the explicit link.
@@ -333,7 +235,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   var filename string
   info := Info{
     Ip: r.RemoteAddr,
-    Random: rand64(),
+    Random: rand.Int63(),
   }
 
   if (len(uriChunks) == 2 && len(uriChunks[1]) != 0) {
@@ -369,7 +271,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
     }
   }
 
-  exists, err := hasFileByFilename(filename)
+  exists, err := HasFileByFilename(filename)
   if (err == nil && !exists) {
     file, err := gfs.Create(filename)
     if (err != nil) {
@@ -416,7 +318,7 @@ func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
     return
   } else if (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
   }
-  exists, err := hasFileByFilename(uriChunks[1])
+  exists, err := HasFileByFilename(uriChunks[1])
   if (err != nil) {
     serverErr(w,r,err)
     return
@@ -710,7 +612,7 @@ func main() {
   loadConfiguration(ConfigFile)
 
   if (len(FetchUrl) > 0) {
-    file, err := fetchFileFromURL(FetchUrl)
+    file, err := FetchFileFromURL(FetchUrl)
     if (err != nil) {
       log.Println(err)
       return
@@ -741,7 +643,7 @@ func main() {
       return
     }
     log.Printf("POSTing: %s\n", url.String())
-    url_path, err := putFileFromPath(url.String(), PutFile)
+    url_path, err := PutFileFromPath(url.String(), PutFile)
     if (err != nil) {
       log.Println(err)
       return
