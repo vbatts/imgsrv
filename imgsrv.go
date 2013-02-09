@@ -11,7 +11,6 @@ import (
   "log"
   "labix.org/v2/mgo"
   "labix.org/v2/mgo/bson"
-  goconf "git.corp.redhat.com/srv/git/dev/towers/engineering/go/conf.git"
   "net/http"
   "flag"
   "fmt"
@@ -32,7 +31,7 @@ import (
 )
 
 var (
-  ConfigFile   = fmt.Sprintf("%s/.imgsrv.conf", os.Getenv("HOME"))
+  ConfigFile   = fmt.Sprintf("%s/.imgsrv.yaml", os.Getenv("HOME"))
 
   DefaultRunAsServer    = false
   RunAsServer           = DefaultRunAsServer
@@ -107,29 +106,6 @@ func hasFileByKeyword(keyword string) (exists bool, err error) {
   }
   exists = (c > 0)
   return exists, nil
-}
-
-func getFileByFilename(filename string) (this_file File, err error) {
-  err = gfs.Find(bson.M{"filename":filename}).One(&this_file)
-  if (err != nil) {
-    return this_file, err
-  }
-  return this_file, nil
-}
-
-func getFileRandom() (this_file File, err error) {
-  r := rand64()
-  err = gfs.Find(bson.M{"random": bson.M{"$gt" : r } }).One(&this_file)
-  if (err != nil) {
-    return this_file, err
-  }
-  if (len(this_file.Md5) == 0) {
-    err = gfs.Find(bson.M{"random": bson.M{"$lt" : r } }).One(&this_file)
-  }
-  if (err != nil) {
-    return this_file, err
-  }
-  return this_file, nil
 }
 
 
@@ -675,22 +651,22 @@ func init() {
 
 }
 
-func loadConfiguration(filename string) (c *goconf.ConfigFile) {
+func loadConfiguration(filename string) (c Config) {
   //log.Printf("Attempting to load config file: %s", filename)
-  c, err := goconf.ReadConfigFile(filename)
+  c, err := ReadConfigFile(filename)
   if (err != nil) {
     //log.Println(err)
-    return goconf.NewConfigFile()
+    return Config{}
   }
 
-  cRunAsServer, _ := c.GetBool("default", "server")
-  cServerIp, _ := c.GetString("default", "ip")
-  cServerPort, _ := c.GetString("default", "port")
-  cMongoHost, _ := c.GetString("default", "mongohost")
-  cMongoDB, _ := c.GetString("default", "mongodb")
-  cMongoUsername, _ := c.GetString("default", "mongousername")
-  cMongoPassword, _ := c.GetString("default", "mongopassword")
-  cRemoteHost, _ := c.GetString("default", "remotehost")
+  cRunAsServer := c.GetBool("server")
+  cServerIp := c.GetString("ip")
+  cServerPort := c.GetString("port")
+  cMongoHost := c.GetString("mongohost")
+  cMongoDB := c.GetString("mongodb")
+  cMongoUsername := c.GetString("mongousername")
+  cMongoPassword := c.GetString("mongopassword")
+  cRemoteHost := c.GetString("remotehost")
 
   // Only set variables from config file,
   // if they weren't passed as flags
