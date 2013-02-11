@@ -6,6 +6,7 @@ type Info struct {
   Keywords []string // tags
   Ip string // who uploaded it
   Random int64
+  TimeStamp time.Time "timestamp,omitempty"
 }
 
 type File struct {

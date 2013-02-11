@@ -153,23 +153,22 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   info := Info{
     Ip: r.RemoteAddr,
     Random: Rand64(),
+    TimeStamp: time.Now(),
   }
 
-  if (len(uriChunks) == 2 && len(uriChunks[1]) != 0) {
+  filename = r.FormValue("filename")
+  if (len(filename) == 0 && len(uriChunks) == 2 && len(uriChunks[1]) != 0) {
     filename = uriChunks[1]
   }
-  if (len(filename) == 0) {
-    filename = r.FormValue("filename")
-    log.Printf("%s", filename)
-  }
+  log.Printf("%s\n", filename)
 
-  p_ext := r.FormValue("ext")
-  log.Printf("%t", p_ext)
+  var p_ext string
+  p_ext = r.FormValue("ext")
   if (len(filename) > 0 && len(p_ext) == 0) {
     p_ext = filepath.Ext(filename)
-  }// else if (len(p_ext) > 0 && p_ext[0] != ".") {
-    //p_ext = fmt.Sprintf(".%s", p_ext)
-  //}
+  } else if (len(p_ext) > 0 && strings.HasPrefix(p_ext, ".")) {
+    p_ext = fmt.Sprintf(".%s", p_ext)
+  }
 
   for _, word := range []string{
     "k", "key", "keyword",
@@ -193,6 +192,8 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
       filename = fmt.Sprintf("%s%s", str, p_ext)
     }
   }
+  log.Printf("%q\n", filename)
+  log.Printf("%t\n", p_ext)
 
   exists, err := HasFileByFilename(filename)
   if (err == nil && !exists) {
@@ -219,29 +220,32 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
           n)
     }
   } else if (exists) {
-    log.Printf("[%s] already exists", filename)
-    file, err := gfs.Open(filename)
-    defer file.Close()
-    if (err != nil) {
-      serverErr(w,r,err)
-      return
-    }
+    if (r.Method == "PUT") {
+      // TODO nothing will get here presently. Workflow needs more review
+      file, err := gfs.Open(filename)
+      defer file.Close()
+      if (err != nil) {
+        serverErr(w,r,err)
+        return
+      }
 
-    var mInfo Info
-    err = file.GetMeta(&mInfo)
-    if (err != nil) {
-      log.Printf("ERROR: failed to get metadata for %s. %s\n", filename, err)
+      var mInfo Info
+      err = file.GetMeta(&mInfo)
+      if (err != nil) {
+        log.Printf("ERROR: failed to get metadata for %s. %s\n", filename, err)
+      }
+      mInfo.Keywords = append(mInfo.Keywords, info.Keywords...)
+      file.SetMeta(&mInfo)
+    } else {
+      log.Printf("[%s] already exists", filename)
     }
-    mInfo.Keywords = append(mInfo.Keywords, info.Keywords...)
-    file.SetMeta(&mInfo)
-
   } else {
     serverErr(w,r,err)
     return
   }
 
   io.WriteString(w,
-      fmt.Sprintf("%s%s/f/%s\n", r.URL.Scheme, r.URL.Host, filename))
+      fmt.Sprintf("<a href=\"/f/%s\">/f/%s</a>\n", filename, filename))
 
   LogRequest(r,200)
 }
@@ -308,7 +312,7 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "text/html")
   //iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
   var files []File
-  err := gfs.Find(nil).Sort("-uploadDate").Limit(10).All(&files)
+  err := gfs.Find(nil).Sort("-metadata.timestamp").Limit(40).All(&files)
   if (err != nil) {
     serverErr(w,r,err)
     return
@@ -420,20 +424,70 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
 
 func routeUpload(w http.ResponseWriter, r *http.Request) {
   if (r.Method == "POST") {
-    // handle the form posting to this route
-    routeFilesPOST(w,r)
-    return
-  }
+    info := Info{
+      Ip: r.RemoteAddr,
+      Random: Rand64(),
+    }
 
-  if (r.Method != "GET") {
+    // handle the form posting to this route
+    r.ParseMultipartForm(1024*5)
+    log.Printf("%q", r.MultipartForm.Value)
+    for k, v := range r.MultipartForm.Value {
+      if (k == "keywords") {
+        info.Keywords = append(info.Keywords, strings.Split(v[0],",")...)
+      } else {
+        log.Printf("WARN: not sure what to do with param [%s = %s]", k,v)
+      }
+    }
+
+    filehdr := r.MultipartForm.File["filename"][0]
+    exists, err := HasFileByFilename(filehdr.Filename)
+    if (err != nil) {
+      serverErr(w,r,err)
+      return
+    } else if (err == nil && !exists) {
+      file, err := gfs.Create(filehdr.Filename)
+      defer file.Close()
+      if (err != nil) {
+        serverErr(w,r,err)
+        return
+      }
+      file.SetMeta(&info)
+
+      multiFile, err := filehdr.Open()
+      if (err != nil) {
+        log.Println(err)
+        return
+      }
+      n, err := io.Copy(file, multiFile)
+      if (err != nil) {
+        serverErr(w,r,err)
+        return
+      }
+      if (n != r.ContentLength) {
+        log.Printf("WARNING: [%s] content-length (%d), content written (%d)",
+            filehdr.Filename,
+            r.ContentLength,
+            n)
+      }
+
+      io.WriteString(w,
+        fmt.Sprintf("<a href=\"/f/%s\">/f/%s</a>\n", filehdr.Filename, filehdr.Filename))
+    } else if (exists) {
+      // print some message about the file already existing
+    } else {
+      serverErr(w,r,err)
+      return
+    }
+  } else if (r.Method == "GET") {
+    // Show the upload form
+    UploadPage(w)
+  } else {
     LogRequest(r,404)
     http.NotFound(w,r)
     return
   }
-
-  // Show the upload form
-  UploadPage(w)
-  LogRequest(r,200)
+  LogRequest(r,200) // if we make it this far, then log success
 }
 
 func initMongo() {

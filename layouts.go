@@ -39,7 +39,7 @@ var listTemplateHTML = `
 {{if .}}
 <ul>
 {{range .}}
-  <li><a href="/f/{{.Filename}}">{{.Filename}}</a> - {{.Md5}}</li>
+<li><a href="/f/{{.Filename}}">{{.Filename}}</a> [md5: <a href="/md5/{{.Md5}}">{{.Md5}}</a>]</li>
 {{end}}
 {{end}}
 </ul>
