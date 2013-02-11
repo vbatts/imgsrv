@@ -6,7 +6,6 @@ import (
   "labix.org/v2/mgo"
   "labix.org/v2/mgo/bson"
   "log"
-  "math/rand"
   "mime"
   "net/http"
   "path/filepath"
@@ -153,29 +152,35 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   var filename string
   info := Info{
     Ip: r.RemoteAddr,
-    Random: rand.Int63(),
+    Random: Rand64(),
   }
 
   if (len(uriChunks) == 2 && len(uriChunks[1]) != 0) {
     filename = uriChunks[1]
   }
-  params := parseRawQuery(r.URL.RawQuery)
-  var p_ext string
-  for k,v := range params {
-    switch {
-    case (k == "filename"):
-      filename = v
-    case (k == "ext"):
-      if (v[0] != '.') {
-        p_ext = fmt.Sprintf(".%s", v)
+  if (len(filename) == 0) {
+    filename = r.FormValue("filename")
+    log.Printf("%s", filename)
+  }
+
+  p_ext := r.FormValue("ext")
+  log.Printf("%t", p_ext)
+  if (len(filename) > 0 && len(p_ext) == 0) {
+    p_ext = filepath.Ext(filename)
+  }// else if (len(p_ext) > 0 && p_ext[0] != ".") {
+    //p_ext = fmt.Sprintf(".%s", p_ext)
+  //}
+
+  for _, word := range []string{
+    "k", "key", "keyword",
+    "keys", "keywords",
+  } {
+    v := r.FormValue(word)
+    if (len(v) > 0) {
+      if (strings.Contains(v, ",")) {
+        info.Keywords = append(info.Keywords, strings.Split(v,",")...)
       } else {
-        p_ext = v
-      }
-    case (k == "k" || k == "key" || k == "keyword"):
-      info.Keywords = append(info.Keywords[:], v)
-    case (k == "keys" || k == "keywords"):
-      for _, key := range strings.Split(v, ",") {
-        info.Keywords = append(info.Keywords[:], key)
+        info.Keywords = append(info.Keywords, v)
       }
     }
   }
@@ -192,24 +197,44 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   exists, err := HasFileByFilename(filename)
   if (err == nil && !exists) {
     file, err := gfs.Create(filename)
+    defer file.Close()
     if (err != nil) {
       serverErr(w,r,err)
       return
     }
+
+    file.SetMeta(&info)
+
+    // copy the request body into the gfs file
     n, err := io.Copy(file, r.Body)
     if (err != nil) {
       serverErr(w,r,err)
       return
     }
+
     if (n != r.ContentLength) {
       log.Printf("WARNING: [%s] content-length (%d), content written (%d)",
           filename,
           r.ContentLength,
           n)
     }
-    file.Close()
   } else if (exists) {
     log.Printf("[%s] already exists", filename)
+    file, err := gfs.Open(filename)
+    defer file.Close()
+    if (err != nil) {
+      serverErr(w,r,err)
+      return
+    }
+
+    var mInfo Info
+    err = file.GetMeta(&mInfo)
+    if (err != nil) {
+      log.Printf("ERROR: failed to get metadata for %s. %s\n", filename, err)
+    }
+    mInfo.Keywords = append(mInfo.Keywords, info.Keywords...)
+    file.SetMeta(&mInfo)
+
   } else {
     serverErr(w,r,err)
     return
@@ -282,8 +307,13 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
 
   w.Header().Set("Content-Type", "text/html")
   //iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
-  iter := gfs.Find(nil).Sort("-uploadDate").Limit(10).Iter()
-  writeList(w, iter)
+  var files []File
+  err := gfs.Find(nil).Sort("-uploadDate").Limit(10).All(&files)
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+  ListFilesPage(w,files)
   LogRequest(r,200)
 }
 
@@ -297,8 +327,13 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "text/html")
 
   // Show a page of all the images
-  iter := gfs.Find(nil).Iter()
-  writeList(w, iter)
+  var files []File
+  err := gfs.Find(nil).All(&files)
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+  ListFilesPage(w,files)
   LogRequest(r,200)
 }
 
@@ -338,7 +373,13 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  writeList(w, iter)
+  var files []File
+  err := iter.All(&files)
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+  ListFilesPage(w, files)
 
   LogRequest(r,200)
 }
@@ -377,6 +418,24 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
   LogRequest(r,200)
 }
 
+func routeUpload(w http.ResponseWriter, r *http.Request) {
+  if (r.Method == "POST") {
+    // handle the form posting to this route
+    routeFilesPOST(w,r)
+    return
+  }
+
+  if (r.Method != "GET") {
+    LogRequest(r,404)
+    http.NotFound(w,r)
+    return
+  }
+
+  // Show the upload form
+  UploadPage(w)
+  LogRequest(r,200)
+}
+
 func initMongo() {
   mongo_session, err := mgo.Dial(MongoHost)
   if err != nil {
@@ -400,6 +459,7 @@ func runServer(ip, port string) {
   defer mongo_session.Close()
 
   http.HandleFunc("/", routeRoot)
+  http.HandleFunc("/upload", routeUpload)
   http.HandleFunc("/all", routeAll)
   http.HandleFunc("/f/", routeFiles)
   http.HandleFunc("/k/", routeKeywords)
