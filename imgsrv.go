@@ -64,6 +64,58 @@ type File struct {
   ContentType string "contentType,omitempty"
 }
 
+func main() {
+  flag.Parse()
+  for _, arg := range flag.Args() {
+    // What to do with these floating args ...
+    log.Printf("%s", arg)
+  }
+
+  // loads either default or flag specified config
+  // to override variables
+  loadConfiguration(ConfigFile)
+
+  if (len(FetchUrl) > 0) {
+    file, err := FetchFileFromURL(FetchUrl)
+    if (err != nil) {
+      log.Println(err)
+      return
+    }
+    log.Println(file)
+  } else if (RunAsServer) {
+    log.Printf("%s", ServerIP)
+    runServer(ServerIP,ServerPort)
+  } else {
+    if (len(RemoteHost) == 0) {
+      log.Println("Please provide a remotehost!")
+      return
+    }
+    if (len(PutFile) == 0 ) { //&& len(flag.Args()) == 0) {
+      log.Println("Please provide files to be uploaded!")
+      return
+    }
+    _,basename := filepath.Split(PutFile)
+    queryParams := "?filename=" + basename
+    if (len(FileKeywords) > 0) {
+      queryParams = queryParams + "&keywords=" + FileKeywords
+    } else {
+      log.Println("WARN: you didn't provide any keywords :-(")
+    }
+    url, err := url.Parse(RemoteHost + "/f/" + queryParams)
+    if (err != nil) {
+      log.Println(err)
+      return
+    }
+    log.Printf("POSTing: %s\n", url.String())
+    url_path, err := PutFileFromPath(url.String(), PutFile)
+    if (err != nil) {
+      log.Println(err)
+      return
+    }
+    log.Printf("New Image!: %s%s\n", RemoteHost, url_path)
+  }
+}
+
 /* http://golang.org/doc/effective_go.html#init */
 func init() {
   flag.StringVar(&ConfigFile,
@@ -169,57 +221,5 @@ func loadConfiguration(filename string) (c Config) {
   }
 
   return c
-}
-
-func main() {
-  flag.Parse()
-  for _, arg := range flag.Args() {
-    // What to do with these floating args ...
-    log.Printf("%s", arg)
-  }
-
-  // loads either default or flag specified config
-  // to override variables
-  loadConfiguration(ConfigFile)
-
-  if (len(FetchUrl) > 0) {
-    file, err := FetchFileFromURL(FetchUrl)
-    if (err != nil) {
-      log.Println(err)
-      return
-    }
-    log.Println(file)
-  } else if (RunAsServer) {
-    log.Printf("%s", ServerIP)
-    runServer(ServerIP,ServerPort)
-  } else {
-    if (len(RemoteHost) == 0) {
-      log.Println("Please provide a remotehost!")
-      return
-    }
-    if (len(PutFile) == 0 ) { //&& len(flag.Args()) == 0) {
-      log.Println("Please provide files to be uploaded!")
-      return
-    }
-    _,basename := filepath.Split(PutFile)
-    queryParams := "?filename=" + basename
-    if (len(FileKeywords) > 0) {
-      queryParams = queryParams + "&keywords=" + FileKeywords
-    } else {
-      log.Println("WARN: you didn't provide any keywords :-(")
-    }
-    url, err := url.Parse(RemoteHost + "/f/" + queryParams)
-    if (err != nil) {
-      log.Println(err)
-      return
-    }
-    log.Printf("POSTing: %s\n", url.String())
-    url_path, err := PutFileFromPath(url.String(), PutFile)
-    if (err != nil) {
-      log.Println(err)
-      return
-    }
-    log.Printf("New Image!: %s%s\n", RemoteHost, url_path)
-  }
 }
 
