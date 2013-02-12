@@ -1,9 +1,9 @@
 package main
 
 import (
-  //"html/template"
-  "text/template"
+  "fmt"
   "io"
+  "text/template"
 )
 
 var emptyInterface interface{}
@@ -144,7 +144,7 @@ func UrliePage(w io.Writer) (err error) {
   if (err != nil) {
     return err
   }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : ""})
+  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
   if (err != nil) {
     return err
   }
@@ -167,7 +167,7 @@ func UploadPage(w io.Writer) (err error) {
   if (err != nil) {
     return err
   }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : ""})
+  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
   if (err != nil) {
     return err
   }
@@ -191,7 +191,7 @@ func ListFilesPage(w io.Writer, files []File) (err error) {
   if (err != nil) {
     return err
   }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : ""})
+  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
   if (err != nil) {
     return err
   }
