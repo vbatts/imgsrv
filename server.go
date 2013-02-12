@@ -13,6 +13,8 @@ import (
   "time"
 )
 
+var defaultPageLimit int = 25
+
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
       log.Printf("Error: %s", e)
       LogRequest(r,503)
@@ -42,19 +44,6 @@ func chunkURI(uri string) (chunks []string) {
     str = uri
   }
   return strings.Split(str, "/")
-}
-
-/* given an url.URL.RawQuery, get a dictionary in return */
-func parseRawQuery(qry string) (params map[string]string) {
-  qryChunks := strings.Split(qry, "&")
-  params = make(map[string]string, len(qryChunks))
-  for _, chunk := range qryChunks {
-    p := strings.SplitN(chunk, "=", 2)
-    if (len(p) == 2) {
-      params[p[0]] = p[1]
-    }
-  }
-  return params
 }
 
 /* kindof a common log type output */
@@ -192,8 +181,6 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
       filename = fmt.Sprintf("%s%s", str, p_ext)
     }
   }
-  log.Printf("%q\n", filename)
-  log.Printf("%t\n", p_ext)
 
   exists, err := HasFileByFilename(filename)
   if (err == nil && !exists) {
@@ -244,8 +231,12 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  io.WriteString(w,
-      fmt.Sprintf("<a href=\"/f/%s\">/f/%s</a>\n", filename, filename))
+  if (strings.Contains(r.Header.Get("Accept"), "text/html")) {
+    io.WriteString(w,
+        fmt.Sprintf("<a href=\"/f/%s\">/f/%s</a>\n", filename, filename))
+  } else {
+    io.WriteString(w, fmt.Sprintf("/f/%s\n", filename))
+  }
 
   LogRequest(r,200)
 }
@@ -310,9 +301,9 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
   // Show a page of most recent images, and tags, and uploaders ...
 
   w.Header().Set("Content-Type", "text/html")
-  //iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(10).Iter()
+  //iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(defaultPageLimit).Iter()
   var files []File
-  err := gfs.Find(nil).Sort("-metadata.timestamp").Limit(40).All(&files)
+  err := gfs.Find(nil).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
   if (err != nil) {
     serverErr(w,r,err)
     return
@@ -358,27 +349,50 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
     LogRequest(r,404)
     http.NotFound(w,r)
     return
+  } else if (len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0)) {
+    routeRoot(w,r)
+    return
   }
 
   log.Printf("K: %s (%d)", uriChunks, len(uriChunks))
-  params := parseRawQuery(r.URL.RawQuery)
-  log.Printf("K: params: %s", params)
 
   var iter *mgo.Iter
-  if (len(uriChunks) == 1) {
-    // show a sorted list of tag name links
-    iter = gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Sort("$natural").Limit(100).Iter()
-  } else if (len(uriChunks) == 2) {
-    iter = gfs.Find(bson.M{"metadata": bson.M{"keywords": uriChunks[1] } }).Limit(10).Iter()
-  } else if (uriChunks[2] == "r") {
+  if (uriChunks[len(uriChunks)-1] == "r") {
     // TODO determine how to show a random image by keyword ...
     log.Println("random isn't built yet")
     LogRequest(r,404)
     return
+  } else if (len(uriChunks) == 2) {
+    log.Println(uriChunks[1])
+    iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1] }).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
   }
 
   var files []File
   err := iter.All(&files)
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+  log.Println(len(files))
+  ListFilesPage(w, files)
+
+  LogRequest(r,200)
+}
+
+func routeMD5s(w http.ResponseWriter, r *http.Request) {
+  uriChunks := chunkURI(r.URL.Path)
+  if (r.Method != "GET") {
+    LogRequest(r,404)
+    http.NotFound(w,r)
+    return
+  } else if (len(uriChunks) != 2) {
+    // they didn't give an MD5, re-route
+    routeRoot(w,r)
+    return
+  }
+
+  var files []File
+  err := gfs.Find(bson.M{"md5": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
   if (err != nil) {
     serverErr(w,r,err)
     return
@@ -388,19 +402,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
   LogRequest(r,200)
 }
 
-func writeList(w http.ResponseWriter, iter *mgo.Iter) {
-  var this_file File
-  fmt.Fprintf(w, "<ul>\n")
-  for iter.Next(&this_file) {
-    log.Println(this_file.Filename)
-    fmt.Fprintf(w, "<li>%s - %d</li>\n",
-        linkToFile("", this_file.Filename),
-        this_file.UploadDate.Year())
-  }
-  fmt.Fprintf(w, "</ul>\n")
-}
-
-// Show a page of all the uploader's IPs, and the images
+// Show a page of file extensions, and allow paging by ext
 func routeExt(w http.ResponseWriter, r *http.Request) {
   if (r.Method != "GET") {
     LogRequest(r,404)
@@ -422,15 +424,24 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
   LogRequest(r,200)
 }
 
+/*
+  GET /upload
+  POST /upload
+*/
 func routeUpload(w http.ResponseWriter, r *http.Request) {
   if (r.Method == "POST") {
     info := Info{
       Ip: r.RemoteAddr,
       Random: Rand64(),
+      TimeStamp: time.Now(),
     }
 
     // handle the form posting to this route
-    r.ParseMultipartForm(1024*5)
+    err := r.ParseMultipartForm(1024*5)
+    if (err != nil) {
+      serverErr(w,r,err)
+      return
+    }
     log.Printf("%q", r.MultipartForm.Value)
     for k, v := range r.MultipartForm.Value {
       if (k == "keywords") {
@@ -490,6 +501,20 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
   LogRequest(r,200) // if we make it this far, then log success
 }
 
+func routeAssets(w http.ResponseWriter, r *http.Request) {
+  path, err := filepath.Rel("/assets", r.URL.Path)
+  if (err != nil) {
+    serverErr(w,r,err)
+    return
+  }
+
+  switch path {
+    case "bootstrap.css":
+      fmt.Fprint(w,bootstrapCSS)
+      w.Header().Set("Content-Type", "text/css")
+  }
+}
+
 func initMongo() {
   mongo_session, err := mgo.Dial(MongoHost)
   if err != nil {
@@ -513,13 +538,14 @@ func runServer(ip, port string) {
   defer mongo_session.Close()
 
   http.HandleFunc("/", routeRoot)
+  http.HandleFunc("/assets/", routeAssets)
   http.HandleFunc("/upload", routeUpload)
   http.HandleFunc("/all", routeAll)
   http.HandleFunc("/f/", routeFiles)
   http.HandleFunc("/k/", routeKeywords)
   http.HandleFunc("/ip/", routeIPs)
   http.HandleFunc("/ext/", routeExt)
-  //http.HandleFunc("/md5/", routeMD5s)
+  http.HandleFunc("/md5/", routeMD5s)
 
   log.Printf("Serving on %s ...", addr)
   log.Fatal(http.ListenAndServe(addr, nil))
