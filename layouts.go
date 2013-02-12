@@ -64,10 +64,36 @@ var tailTemplateHTML = `
 </html>
 `
 
+var formGetUrlTemplate = template.Must(template.New("formGetUrl").Parse(formGetUrlTemplateHTML))
+var formGetUrlTemplateHTML = `
+<div class="span9">
+<div class="hero-unit">
+  <h3>Get file from URL</h3>
+<form enctype="multipart/form-data" action="/urlie" method="POST">
+  <table>
+    <tr>
+  <td>
+      <input type="text" name="url" placeholder="file URL"><br/>
+      <input type="text" name="keywords" placeholder="keywords"><i>(comma seperatated, no spaces)</i>
+  </td>
+    </tr>
+    <tr>
+    <td>
+      <input type="submit" value="Fetch File"><br/>
+  </td>
+    </tr>
+  </td>
+  </table>
+</form>
+</div>{{/* hero-unit */}}
+</div>{{/* span9 */}}
+`
+
 var formFileUploadTemplate = template.Must(template.New("formFileUpload").Parse(formFileUploadTemplateHTML))
 var formFileUploadTemplateHTML = `
 <div class="span9">
 <div class="hero-unit">
+  <h3>Upload a File</h3>
 <form enctype="multipart/form-data" action="/upload" method="POST">
   <table>
     <tr>
@@ -101,6 +127,29 @@ var listTemplateHTML = `
 {{end}}
 `
 
+func UrliePage(w io.Writer) (err error) {
+  err = headTemplate.Execute(w, map[string]string{"title" : "FileSrv :: URLie"})
+  if (err != nil) {
+    return err
+  }
+  err = navbarTemplate.Execute(w, nil)
+  if (err != nil) {
+    return err
+  }
+  err = containerBeginTemplate.Execute(w, nil)
+  if (err != nil) {
+    return err
+  }
+  err = formGetUrlTemplate.Execute(w, &emptyInterface)
+  if (err != nil) {
+    return err
+  }
+  err = tailTemplate.Execute(w, map[string]string{"footer" : ""})
+  if (err != nil) {
+    return err
+  }
+  return
+}
 func UploadPage(w io.Writer) (err error) {
   err = headTemplate.Execute(w, map[string]string{"title" : "FileSrv :: Upload"})
   if (err != nil) {
