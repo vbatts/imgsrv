@@ -3,12 +3,12 @@
 
 Either 
 
-  git clone git://<host>/<path>
+  git clone git://<host>/imgsrv.git
   cd filesrv
   go build
   ./filesrv
 
 or
 
-  go get git://<host>/<path>
+  go get github.com/vbatts/imgsrv
 
