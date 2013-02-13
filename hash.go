@@ -1,17 +1,12 @@
 package main
 
 import (
-  "math/rand"
   "crypto/md5"
   "fmt"
   "hash/adler32"
   "io"
   "time"
 )
-
-func Rand64() int64 {
-  return rand.Int63()
-}
 
 /* Convinience method for getting md5 sum of a string */
 func GetMd5FromString(blob string) (sum []byte) {

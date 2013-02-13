@@ -6,6 +6,7 @@ import (
   "labix.org/v2/mgo"
   "labix.org/v2/mgo/bson"
   "log"
+  "math/rand"
   "mime"
   "net/http"
   "os"
@@ -142,7 +143,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
   var filename string
   info := Info{
     Ip: r.RemoteAddr,
-    Random: Rand64(),
+    Random: rand.Int63(),
     TimeStamp: time.Now(),
   }
 
@@ -433,7 +434,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
   if (r.Method == "POST") {
     info := Info{
       Ip: r.RemoteAddr,
-      Random: Rand64(),
+      Random: rand.Int63(),
       TimeStamp: time.Now(),
     }
     log.Println(info)
@@ -512,7 +513,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
   if (r.Method == "POST") {
     info := Info{
       Ip: r.RemoteAddr,
-      Random: Rand64(),
+      Random: rand.Int63(),
       TimeStamp: time.Now(),
     }
 

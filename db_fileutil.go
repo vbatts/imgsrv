@@ -3,6 +3,7 @@ package main
 
 import (
   "labix.org/v2/mgo/bson"
+  "math/rand"
 )
 
 /* gfs is a *mgo.GridFS defined in imgsrv.go */
@@ -16,7 +17,7 @@ func GetFileByFilename(filename string) (this_file File, err error) {
 }
 
 func GetFileRandom() (this_file File, err error) {
-  r := Rand64()
+  r := rand.Int63()
   err = gfs.Find(bson.M{"random": bson.M{"$gt" : r } }).One(&this_file)
   if (err != nil) {
     return this_file, err
