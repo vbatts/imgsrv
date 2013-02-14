@@ -1,11 +1,11 @@
 package main
 
 import (
-  "math/rand"
   "crypto/md5"
   "fmt"
   "hash/adler32"
   "io"
+  "math/rand"
   "time"
 )
 
