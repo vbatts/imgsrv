@@ -1,13 +1,12 @@
 package main
 
 import (
-  "fmt"
-  "io"
-  "text/template"
+	"fmt"
+	"io"
+	"text/template"
 )
 
 var emptyInterface interface{}
-
 
 var headTemplate = template.Must(template.New("head").Parse(headTemplateHTML))
 var headTemplateHTML = `
@@ -128,85 +127,75 @@ var listTemplateHTML = `
 `
 
 func UrliePage(w io.Writer) (err error) {
-  err = headTemplate.Execute(w, map[string]string{"title" : "FileSrv :: URLie"})
-  if (err != nil) {
-    return err
-  }
-  err = navbarTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = containerBeginTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = formGetUrlTemplate.Execute(w, &emptyInterface)
-  if (err != nil) {
-    return err
-  }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
-  if (err != nil) {
-    return err
-  }
-  return
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: URLie"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = formGetUrlTemplate.Execute(w, &emptyInterface)
+	if err != nil {
+		return err
+	}
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
 }
 func UploadPage(w io.Writer) (err error) {
-  err = headTemplate.Execute(w, map[string]string{"title" : "FileSrv :: Upload"})
-  if (err != nil) {
-    return err
-  }
-  err = navbarTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = containerBeginTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = formFileUploadTemplate.Execute(w, &emptyInterface)
-  if (err != nil) {
-    return err
-  }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
-  if (err != nil) {
-    return err
-  }
-  return
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: Upload"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = formFileUploadTemplate.Execute(w, &emptyInterface)
+	if err != nil {
+		return err
+	}
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func ListFilesPage(w io.Writer, files []File) (err error) {
-  err = headTemplate.Execute(w, map[string]string{"title" : "FileSrv"})
-  if (err != nil) {
-    return err
-  }
-  err = navbarTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = containerBeginTemplate.Execute(w, nil)
-  if (err != nil) {
-    return err
-  }
-  err = listTemplate.Execute(w, files)
-  if (err != nil) {
-    return err
-  }
-  err = tailTemplate.Execute(w, map[string]string{"footer" : fmt.Sprintf("Version: %s", VERSION)})
-  if (err != nil) {
-    return err
-  }
-  return
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = listTemplate.Execute(w, files)
+	if err != nil {
+		return err
+	}
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
 }
-
-
-
-
-
-
-
-
-
-
 
 var bootstrapCSS = `
 /*!
@@ -6249,5 +6238,3 @@ a.badge:hover {
   position: fixed;
 }
 `
-
-
