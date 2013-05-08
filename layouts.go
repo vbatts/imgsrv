@@ -36,6 +36,7 @@ var navbarTemplateHTML = `
             <li><a href="/">Home</a></li>
             <li><a href="/upload">Upload</a></li>
             <li><a href="/urlie">URLie</a></li>
+            <li><a href="/all">All</a></li>
           </ul>
         </div>
       </div>
@@ -73,7 +74,8 @@ var formGetUrlTemplateHTML = `
     <tr>
   <td>
       <input type="text" name="url" placeholder="file URL"><br/>
-      <input type="text" name="keywords" placeholder="keywords"><i>(comma seperatated, no spaces)</i>
+      <input type="text" name="keywords" placeholder="keywords"><i>(comma seperatated, no spaces)</i><br/>
+      <input type="checkbox" name="rand" value="true">Randomize filename
   </td>
     </tr>
     <tr>
@@ -98,7 +100,8 @@ var formFileUploadTemplateHTML = `
     <tr>
   <td>
       <input type="file" name="filename" placeholder="filename"><br/>
-      <input type="text" name="keywords" placeholder="keywords"><i>(comma seperatated, no spaces)</i>
+      <input type="text" name="keywords" placeholder="keywords"><i>(comma seperatated, no spaces)</i><br/>
+      <input type="checkbox" name="rand" value="true">Randomize filename
   </td>
     </tr>
     <tr>
@@ -125,6 +128,16 @@ var listTemplateHTML = `
 </ul>
 {{end}}
 `
+var imageViewTemplate = template.Must(template.New("image").Parse(imageViewTemplateHTML))
+var imageViewTemplateHTML = `
+{{if .}}
+<a href="/f/{{.Filename}}"><img src="/f/{{.Filename}}"></a>
+<br/>
+[keywords:{{range $key := .Metadata.Keywords}} <a href="/k/{{$key}}">{{$key}}</a>{{end}}]
+<br/>
+[md5: <a href="/md5/{{.Md5}}">{{.Md5 | printf "%8.8s"}}...</a>]</li>
+{{end}}
+`
 
 func UrliePage(w io.Writer) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: URLie"})
@@ -149,6 +162,7 @@ func UrliePage(w io.Writer) (err error) {
 	}
 	return
 }
+
 func UploadPage(w io.Writer) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: Upload"})
 	if err != nil {
@@ -162,10 +176,39 @@ func UploadPage(w io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
+
+  // main context of this page
 	err = formFileUploadTemplate.Execute(w, &emptyInterface)
 	if err != nil {
 		return err
 	}
+
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func ImageViewPage(w io.Writer, file File) (err error) {
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+
+	err = imageViewTemplate.Execute(w, file)
+	if err != nil {
+		return err
+	}
+
 	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
 	if err != nil {
 		return err
@@ -186,10 +229,13 @@ func ListFilesPage(w io.Writer, files []File) (err error) {
 	if err != nil {
 		return err
 	}
+
+  // main context of this page
 	err = listTemplate.Execute(w, files)
 	if err != nil {
 		return err
 	}
+
 	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
 	if err != nil {
 		return err

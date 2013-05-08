@@ -29,6 +29,7 @@ func runServer(ip, port string) {
 	http.HandleFunc("/urlie", routeGetFromUrl)
 	http.HandleFunc("/all", routeAll)
 	http.HandleFunc("/f/", routeFiles)
+	http.HandleFunc("/v/", routeViews)
 	http.HandleFunc("/k/", routeKeywords)
 	http.HandleFunc("/ip/", routeIPs)
 	http.HandleFunc("/ext/", routeExt)
@@ -111,6 +112,30 @@ func LogRequest(r *http.Request, statusCode int) {
 		r.ContentLength)
 }
 
+func routeViewsGET(w http.ResponseWriter, r *http.Request) {
+	uriChunks := chunkURI(r.URL.Path)
+	if len(uriChunks) > 2 {
+		LogRequest(r, 404)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
+		var file File
+    err := gfs.Find(bson.M{"filename": uriChunks[1]}).One(&file)
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		ImageViewPage(w, file)
+	} else {
+		// no filename given, show them the full listing
+		http.Redirect(w, r, "/all", 302)
+	}
+	LogRequest(r, 200)
+}
+
 /*
   GET /f/
   GET /f/:name
@@ -155,7 +180,8 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		io.Copy(w, file) // send the contents of the file in the body
 
 	} else {
-		// TODO show a list of recent uploads? ...
+		// no filename given, show them the full listing
+		http.Redirect(w, r, "/all", 302)
 	}
 	LogRequest(r, 200)
 }
@@ -311,6 +337,17 @@ func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}
 	// delete the name in the path and/or parameter?
+}
+
+func routeViews(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.Method == "GET":
+		routeViewsGET(w, r)
+	default:
+		LogRequest(r, 404)
+		http.NotFound(w, r)
+		return
+	}
 }
 
 func routeFiles(w http.ResponseWriter, r *http.Request) {
@@ -526,7 +563,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			}
 			log.Printf("Wrote [%d] bytes from %s", n, local_filename)
 
-			http.Redirect(w, r, fmt.Sprintf("/f/%s", filepath.Base(local_filename)), 302)
+			http.Redirect(w, r, fmt.Sprintf("/v/%s", filepath.Base(local_filename)), 302)
 		} else {
 			serverErr(w, r, err)
 			return
@@ -599,7 +636,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 					n)
 			}
 
-			http.Redirect(w, r, fmt.Sprintf("/f/%s", filehdr.Filename), 302)
+			http.Redirect(w, r, fmt.Sprintf("/v/%s", filehdr.Filename), 302)
 		} else if exists {
 			// print some message about the file already existing
 		} else {
