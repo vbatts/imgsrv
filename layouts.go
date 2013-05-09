@@ -163,7 +163,11 @@ var fileViewInfoTemplateHTML = `
 <br/>
 [keywords:{{range $key := .Metadata.Keywords}} <a href="/k/{{$key}}">{{$key}}</a>{{end}}]
 <br/>
-[md5: <a href="/md5/{{.Md5}}">{{.Md5 | printf "%8.8s"}}...</a>]</li>
+[md5: <a href="/md5/{{.Md5}}">{{.Md5}}</a>]
+<br/>
+[size: {{.Length}}]
+<br/>
+[UploadDate: {{.Metadata.TimeStamp}}]
 {{end}}
 `
 
