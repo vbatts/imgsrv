@@ -407,7 +407,7 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
 
 	// Show a page of all the images
 	var files []types.File
-	err := gfs.Find(nil).All(&files)
+	err := gfs.Find(nil).Sort("-metadata.timestamp").All(&files)
 	if err != nil {
 		serverErr(w, r, err)
 		return
