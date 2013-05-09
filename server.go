@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/vbatts/imgsrv/hash"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -210,7 +211,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	var filename string
 	info := Info{
 		Ip:        r.RemoteAddr,
-		Random:    Rand64(),
+		Random:    hash.Rand64(),
 		TimeStamp: time.Now(),
 	}
 
@@ -243,7 +244,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(filename) == 0 {
-		str := GetSmallHash()
+		str := hash.GetSmallHash()
 		if len(p_ext) == 0 {
 			filename = fmt.Sprintf("%s.jpg", str)
 		} else {
@@ -524,7 +525,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		info := Info{
 			Ip:        r.RemoteAddr,
-			Random:    Rand64(),
+			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
 		}
 		log.Println(info)
@@ -620,7 +621,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		info := Info{
 			Ip:        r.RemoteAddr,
-			Random:    Rand64(),
+			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
 		}
 
@@ -630,13 +631,13 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-    useRandName := false
+		useRandName := false
 		log.Printf("%q", r.MultipartForm.Value)
 		for k, v := range r.MultipartForm.Value {
 			if k == "keywords" {
 				info.Keywords = append(info.Keywords, strings.Split(v[0], ",")...)
 			} else if k == "rand" {
-        useRandName = true
+				useRandName = true
 			} else {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
@@ -649,10 +650,10 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-    if exists || useRandName {
-      ext := filepath.Ext(filename)
-			str := GetSmallHash()
-      filename = fmt.Sprintf("%s%s", str, ext)
+		if exists || useRandName {
+			ext := filepath.Ext(filename)
+			str := hash.GetSmallHash()
+			filename = fmt.Sprintf("%s%s", str, ext)
 		}
 
 		file, err := gfs.Create(filename)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/vbatts/imgsrv/hash"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -15,7 +16,7 @@ func GetFileByFilename(filename string) (this_file File, err error) {
 }
 
 func GetFileRandom() (this_file File, err error) {
-	r := Rand64()
+	r := hash.Rand64()
 	err = gfs.Find(bson.M{"random": bson.M{"$gt": r}}).One(&this_file)
 	if err != nil {
 		return this_file, err
