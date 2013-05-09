@@ -1,6 +1,12 @@
 package main
 
-import "time"
+import (
+	"mime"
+	"path/filepath"
+	"strings"
+	"time"
+  "fmt"
+)
 
 type Info struct {
 	Keywords  []string // tags
@@ -16,5 +22,12 @@ type File struct {
 	UploadDate  time.Time
 	Length      int64
 	Filename    string ",omitempty"
+	IsImage     bool
 	ContentType string "contentType,omitempty"
+}
+
+func (f *File) SetIsImage() {
+	m_type := mime.TypeByExtension(filepath.Ext(f.Filename))
+	f.IsImage = strings.Contains(m_type, "image")
+  fmt.Println(f.Filename,f.IsImage)
 }

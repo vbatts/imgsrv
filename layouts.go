@@ -121,17 +121,23 @@ var listTemplateHTML = `
 {{if .}}
 <ul>
 {{range .}}
-<li><a href="/f/{{.Filename}}">{{.Filename}}</a>
+<li>
+<a href="/v/{{.Filename}}">{{.Filename}}</a>
 [keywords:{{range $key := .Metadata.Keywords}} <a href="/k/{{$key}}">{{$key}}</a>{{end}}]
 [md5: <a href="/md5/{{.Md5}}">{{.Md5 | printf "%8.8s"}}...</a>]</li>
 {{end}}
 </ul>
 {{end}}
 `
-var imageViewTemplate = template.Must(template.New("image").Parse(imageViewTemplateHTML))
-var imageViewTemplateHTML = `
+
+var fileViewTemplate = template.Must(template.New("file").Parse(fileViewTemplateHTML))
+var fileViewTemplateHTML = `
 {{if .}}
+{{if .IsImage}}
 <a href="/f/{{.Filename}}"><img src="/f/{{.Filename}}"></a>
+{{else}}
+<a href="/f/{{.Filename}}">{{.Filename}}</a>
+{{end}}
 <br/>
 [keywords:{{range $key := .Metadata.Keywords}} <a href="/k/{{$key}}">{{$key}}</a>{{end}}]
 <br/>
@@ -204,7 +210,7 @@ func ImageViewPage(w io.Writer, file File) (err error) {
 		return err
 	}
 
-	err = imageViewTemplate.Execute(w, file)
+	err = fileViewTemplate.Execute(w, file)
 	if err != nil {
 		return err
 	}

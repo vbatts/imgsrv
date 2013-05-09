@@ -123,12 +123,17 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
 		var file File
-    err := gfs.Find(bson.M{"filename": uriChunks[1]}).One(&file)
+		err := gfs.Find(bson.M{"filename": uriChunks[1]}).One(&file)
 		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-		ImageViewPage(w, file)
+		file.SetIsImage()
+		err = ImageViewPage(w, file)
+		if err != nil {
+			log.Printf("error: %s", err)
+		}
+
 	} else {
 		// no filename given, show them the full listing
 		http.Redirect(w, r, "/all", 302)
@@ -383,7 +388,10 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
 		serverErr(w, r, err)
 		return
 	}
-	ListFilesPage(w, files)
+	err = ListFilesPage(w, files)
+	if err != nil {
+		log.Printf("error: %s", err)
+	}
 	LogRequest(r, 200)
 }
 
@@ -403,7 +411,10 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
 		serverErr(w, r, err)
 		return
 	}
-	ListFilesPage(w, files)
+	err = ListFilesPage(w, files)
+	if err != nil {
+		log.Printf("error: %s", err)
+	}
 	LogRequest(r, 200)
 }
 
@@ -449,7 +460,10 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println(len(files))
-	ListFilesPage(w, files)
+	err = ListFilesPage(w, files)
+	if err != nil {
+		log.Printf("error: %s", err)
+	}
 
 	LogRequest(r, 200)
 }
@@ -472,7 +486,10 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		serverErr(w, r, err)
 		return
 	}
-	ListFilesPage(w, files)
+	err = ListFilesPage(w, files)
+	if err != nil {
+		log.Printf("error: %s", err)
+	}
 
 	LogRequest(r, 200)
 }
@@ -538,7 +555,11 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		exists, err := HasFileByFilename(local_filename)
-		if err == nil && !exists {
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		if !exists {
 			file, err := gfs.Create(filepath.Base(local_filename))
 			defer file.Close()
 			if err != nil {
@@ -569,7 +590,10 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if r.Method == "GET" {
-		UrliePage(w)
+		err := UrliePage(w)
+		if err != nil {
+			log.Printf("error: %s", err)
+		}
 	} else {
 		LogRequest(r, 404)
 		http.NotFound(w, r)
@@ -583,6 +607,16 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
   POST /upload
 */
 func routeUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		// Show the upload form
+		LogRequest(r, 200) // if we make it this far, then log success
+		err := UploadPage(w)
+		if err != nil {
+			log.Printf("error: %s", err)
+		}
+		return
+	}
+
 	if r.Method == "POST" {
 		info := Info{
 			Ip:        r.RemoteAddr,
@@ -596,56 +630,57 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
+    useRandName := false
 		log.Printf("%q", r.MultipartForm.Value)
 		for k, v := range r.MultipartForm.Value {
 			if k == "keywords" {
 				info.Keywords = append(info.Keywords, strings.Split(v[0], ",")...)
+			} else if k == "rand" {
+        useRandName = true
 			} else {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
 		}
 
 		filehdr := r.MultipartForm.File["filename"][0]
-		exists, err := HasFileByFilename(filehdr.Filename)
+		filename := filehdr.Filename
+		exists, err := HasFileByFilename(filename)
 		if err != nil {
 			serverErr(w, r, err)
 			return
-		} else if err == nil && !exists {
-			file, err := gfs.Create(filehdr.Filename)
-			defer file.Close()
-			if err != nil {
-				serverErr(w, r, err)
-				return
-			}
-			file.SetMeta(&info)
+		}
+    if exists || useRandName {
+      ext := filepath.Ext(filename)
+			str := GetSmallHash()
+      filename = fmt.Sprintf("%s%s", str, ext)
+		}
 
-			multiFile, err := filehdr.Open()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			n, err := io.Copy(file, multiFile)
-			if err != nil {
-				serverErr(w, r, err)
-				return
-			}
-			if n != r.ContentLength {
-				log.Printf("WARNING: [%s] content-length (%d), content written (%d)",
-					filehdr.Filename,
-					r.ContentLength,
-					n)
-			}
-
-			http.Redirect(w, r, fmt.Sprintf("/v/%s", filehdr.Filename), 302)
-		} else if exists {
-			// print some message about the file already existing
-		} else {
+		file, err := gfs.Create(filename)
+		defer file.Close()
+		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-	} else if r.Method == "GET" {
-		// Show the upload form
-		UploadPage(w)
+		file.SetMeta(&info)
+
+		multiFile, err := filehdr.Open()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		n, err := io.Copy(file, multiFile)
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		if n != r.ContentLength {
+			log.Printf("WARNING: [%s] content-length (%d), content written (%d)",
+				filename,
+				r.ContentLength,
+				n)
+		}
+
+		http.Redirect(w, r, fmt.Sprintf("/v/%s", filename), 302)
 	} else {
 		LogRequest(r, 404)
 		http.NotFound(w, r)
