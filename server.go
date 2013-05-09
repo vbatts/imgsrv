@@ -522,21 +522,38 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
   POST /urlie
 */
 func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		err := UrliePage(w)
+		if err != nil {
+			log.Printf("error: %s", err)
+		}
+		LogRequest(r, 200)
+		return
+	}
+
 	if r.Method == "POST" {
-		info := Info{
+		var (
+			err             error
+			stored_filename string
+			local_filename  string
+			useRandName     bool = false
+			info            Info
+		)
+
+		info = Info{
 			Ip:        r.RemoteAddr,
 			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
 		}
 		log.Println(info)
 
-		err := r.ParseMultipartForm(1024 * 5)
+		err = r.ParseMultipartForm(1024 * 5)
 		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
+
 		log.Printf("%q", r.MultipartForm.Value)
-		var local_filename string
 		for k, v := range r.MultipartForm.Value {
 			if k == "keywords" {
 				info.Keywords = append(info.Keywords, strings.Split(v[0], ",")...)
@@ -551,56 +568,57 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				// Yay, hopefully we got an image!
+			} else if k == "rand" {
+				useRandName = true
 			} else {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
 		}
-		exists, err := HasFileByFilename(local_filename)
+		exists, err := HasFileByFilename(filepath.Base(local_filename))
 		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-		if !exists {
-			file, err := gfs.Create(filepath.Base(local_filename))
-			defer file.Close()
-			if err != nil {
-				serverErr(w, r, err)
-				return
-			}
 
-			local_fh, err := os.Open(local_filename)
-			defer local_fh.Close()
-			if err != nil {
-				serverErr(w, r, err)
-				return
-			}
-
-			file.SetMeta(&info)
-
-			// copy the request body into the gfs file
-			n, err := io.Copy(file, local_fh)
-			if err != nil {
-				serverErr(w, r, err)
-				return
-			}
-			log.Printf("Wrote [%d] bytes from %s", n, local_filename)
-
-			http.Redirect(w, r, fmt.Sprintf("/v/%s", filepath.Base(local_filename)), 302)
+		if exists || useRandName {
+			ext := filepath.Ext(local_filename)
+			str := hash.GetSmallHash()
+			stored_filename = fmt.Sprintf("%s%s", str, ext)
 		} else {
+			stored_filename = filepath.Base(local_filename)
+		}
+
+		file, err := gfs.Create(stored_filename)
+		defer file.Close()
+		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-	} else if r.Method == "GET" {
-		err := UrliePage(w)
+
+		local_fh, err := os.Open(local_filename)
+		defer local_fh.Close()
 		if err != nil {
-			log.Printf("error: %s", err)
+			serverErr(w, r, err)
+			return
 		}
+
+		file.SetMeta(&info)
+
+		// copy the request body into the gfs file
+		n, err := io.Copy(file, local_fh)
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		log.Printf("Wrote [%d] bytes from %s to %s", n, local_filename, stored_filename)
+
+		http.Redirect(w, r, fmt.Sprintf("/v/%s", stored_filename), 302)
 	} else {
 		LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
-	LogRequest(r, 200)
+	LogRequest(r, 200) // if we make it this far, then log success
 }
 
 /*
