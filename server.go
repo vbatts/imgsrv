@@ -130,7 +130,6 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-		file.SetIsImage()
 		err = ImageViewPage(w, file)
 		if err != nil {
 			log.Printf("error: %s", err)

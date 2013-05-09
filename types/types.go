@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-  "fmt"
 )
 
 type Info struct {
@@ -22,12 +21,19 @@ type File struct {
 	UploadDate  time.Time
 	Length      int64
 	Filename    string ",omitempty"
-	IsImage     bool
 	ContentType string "contentType,omitempty"
 }
 
-func (f *File) SetIsImage() {
-	m_type := mime.TypeByExtension(filepath.Ext(f.Filename))
-	f.IsImage = strings.Contains(m_type, "image")
-  fmt.Println(f.Filename,f.IsImage)
+func (f *File) SetContentType() {
+	f.ContentType = mime.TypeByExtension(filepath.Ext(f.Filename))
+}
+
+func (f *File) IsImage() bool {
+  f.SetContentType()
+	return strings.HasPrefix(f.ContentType, "image")
+}
+
+func (f *File) IsVideo() bool {
+  f.SetContentType()
+	return strings.HasPrefix(f.ContentType, "video")
 }

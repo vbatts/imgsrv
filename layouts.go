@@ -131,14 +131,35 @@ var listTemplateHTML = `
 {{end}}
 `
 
+var fileViewImageTemplate = template.Must(template.New("file").Parse(fileViewImageTemplateHTML))
+var fileViewImageTemplateHTML = `
+{{if .}}
+<a href="/f/{{.Filename}}"><img src="/f/{{.Filename}}"></a>
+{{end}}
+`
+
+var fileViewVideoTemplate = template.Must(template.New("file").Parse(fileViewVideoTemplateHTML))
+var fileViewVideoTemplateHTML = `
+{{if .}}
+<a href="/f/{{.Filename}}">
+<video width="320" height="240" controls>
+  <source src="/f/{{.Filename}}" type="{{.ContentType}}">
+  Your browser does not support the video tag.
+</video>
+</a>
+{{end}}
+`
+
 var fileViewTemplate = template.Must(template.New("file").Parse(fileViewTemplateHTML))
 var fileViewTemplateHTML = `
 {{if .}}
-{{if .IsImage}}
-<a href="/f/{{.Filename}}"><img src="/f/{{.Filename}}"></a>
-{{else}}
 <a href="/f/{{.Filename}}">{{.Filename}}</a>
 {{end}}
+`
+
+var fileViewInfoTemplate = template.Must(template.New("file").Parse(fileViewInfoTemplateHTML))
+var fileViewInfoTemplateHTML = `
+{{if .}}
 <br/>
 [keywords:{{range $key := .Metadata.Keywords}} <a href="/k/{{$key}}">{{$key}}</a>{{end}}]
 <br/>
@@ -211,7 +232,17 @@ func ImageViewPage(w io.Writer, file types.File) (err error) {
 		return err
 	}
 
-	err = fileViewTemplate.Execute(w, file)
+	if file.IsImage() {
+		err = fileViewImageTemplate.Execute(w, file)
+	} else if file.IsVideo() {
+		err = fileViewVideoTemplate.Execute(w, file)
+	} else {
+		err = fileViewTemplate.Execute(w, file)
+	}
+	if err != nil {
+		return err
+	}
+	err = fileViewInfoTemplate.Execute(w, file)
 	if err != nil {
 		return err
 	}
