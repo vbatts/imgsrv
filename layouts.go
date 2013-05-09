@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/vbatts/imgsrv/types"
 	"io"
 	"text/template"
 )
@@ -183,7 +184,7 @@ func UploadPage(w io.Writer) (err error) {
 		return err
 	}
 
-  // main context of this page
+	// main context of this page
 	err = formFileUploadTemplate.Execute(w, &emptyInterface)
 	if err != nil {
 		return err
@@ -196,7 +197,7 @@ func UploadPage(w io.Writer) (err error) {
 	return
 }
 
-func ImageViewPage(w io.Writer, file File) (err error) {
+func ImageViewPage(w io.Writer, file types.File) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
 	if err != nil {
 		return err
@@ -222,7 +223,7 @@ func ImageViewPage(w io.Writer, file File) (err error) {
 	return
 }
 
-func ListFilesPage(w io.Writer, files []File) (err error) {
+func ListFilesPage(w io.Writer, files []types.File) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
 	if err != nil {
 		return err
@@ -236,7 +237,7 @@ func ListFilesPage(w io.Writer, files []File) (err error) {
 		return err
 	}
 
-  // main context of this page
+	// main context of this page
 	err = listTemplate.Execute(w, files)
 	if err != nil {
 		return err

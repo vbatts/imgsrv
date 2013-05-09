@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/vbatts/imgsrv/hash"
+	"github.com/vbatts/imgsrv/types"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -123,7 +124,7 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
-		var file File
+		var file types.File
 		err := gfs.Find(bson.M{"filename": uriChunks[1]}).One(&file)
 		if err != nil {
 			serverErr(w, r, err)
@@ -209,7 +210,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var filename string
-	info := Info{
+	info := types.Info{
 		Ip:        r.RemoteAddr,
 		Random:    hash.Rand64(),
 		TimeStamp: time.Now(),
@@ -286,7 +287,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			var mInfo Info
+			var mInfo types.Info
 			err = file.GetMeta(&mInfo)
 			if err != nil {
 				log.Printf("ERROR: failed to get metadata for %s. %s\n", filename, err)
@@ -383,7 +384,7 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	//iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(defaultPageLimit).Iter()
-	var files []File
+	var files []types.File
 	err := gfs.Find(nil).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -406,7 +407,7 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	// Show a page of all the images
-	var files []File
+	var files []types.File
 	err := gfs.Find(nil).All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -454,7 +455,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
 	}
 
-	var files []File
+	var files []types.File
 	err := iter.All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -481,7 +482,7 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var files []File
+	var files []types.File
 	err := gfs.Find(bson.M{"md5": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -537,10 +538,10 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			stored_filename string
 			local_filename  string
 			useRandName     bool = false
-			info            Info
+			info            types.Info
 		)
 
-		info = Info{
+		info = types.Info{
 			Ip:        r.RemoteAddr,
 			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
@@ -637,7 +638,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		info := Info{
+		info := types.Info{
 			Ip:        r.RemoteAddr,
 			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),

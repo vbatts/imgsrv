@@ -2,12 +2,13 @@ package main
 
 import (
 	"github.com/vbatts/imgsrv/hash"
+	"github.com/vbatts/imgsrv/types"
 	"labix.org/v2/mgo/bson"
 )
 
 /* gfs is a *mgo.GridFS defined in imgsrv.go */
 
-func GetFileByFilename(filename string) (this_file File, err error) {
+func GetFileByFilename(filename string) (this_file types.File, err error) {
 	err = gfs.Find(bson.M{"filename": filename}).One(&this_file)
 	if err != nil {
 		return this_file, err
@@ -15,7 +16,7 @@ func GetFileByFilename(filename string) (this_file File, err error) {
 	return this_file, nil
 }
 
-func GetFileRandom() (this_file File, err error) {
+func GetFileRandom() (this_file types.File, err error) {
 	r := hash.Rand64()
 	err = gfs.Find(bson.M{"random": bson.M{"$gt": r}}).One(&this_file)
 	if err != nil {
@@ -30,7 +31,7 @@ func GetFileRandom() (this_file File, err error) {
 	return this_file, nil
 }
 
-/* Check whether this File filename is on Mongo */
+/* Check whether this types.File filename is on Mongo */
 func HasFileByFilename(filename string) (exists bool, err error) {
 	c, err := gfs.Find(bson.M{"filename": filename}).Count()
 	if err != nil {
