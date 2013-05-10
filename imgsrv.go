@@ -10,6 +10,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/vbatts/imgsrv/client"
+	"github.com/vbatts/imgsrv/util"
 	"labix.org/v2/mgo"
 	"log"
 	"net/url"
@@ -59,7 +61,7 @@ func main() {
 	loadConfiguration(ConfigFile)
 
 	if len(FetchUrl) > 0 {
-		file, err := FetchFileFromURL(FetchUrl)
+		file, err := util.FetchFileFromURL(FetchUrl)
 		if err != nil {
 			log.Println(err)
 			return
@@ -90,7 +92,7 @@ func main() {
 			return
 		}
 		log.Printf("POSTing: %s\n", url.String())
-		url_path, err := PutFileFromPath(url.String(), PutFile)
+		url_path, err := client.PutFileFromPath(url.String(), PutFile)
 		if err != nil {
 			log.Println(err)
 			return

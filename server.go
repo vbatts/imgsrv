@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
+	"github.com/vbatts/imgsrv/util"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -558,7 +559,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			if k == "keywords" {
 				info.Keywords = append(info.Keywords, strings.Split(v[0], ",")...)
 			} else if k == "url" {
-				local_filename, err = FetchFileFromURL(v[0])
+				local_filename, err = util.FetchFileFromURL(v[0])
 				if err != nil {
 					serverErr(w, r, err)
 					return
