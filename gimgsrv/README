@@ -1,0 +1,10 @@
+== Overview ==
+this is hoped to be a client, that can read the user's imgsrv configuration
+and make it easier to upload images or screen shots.
+package it with an XDG/mime association and away you go
+
+== References ==
+* http://godoc.org/github.com/ziutek/gtk
+* http://www.gtk.org/api/2.6/gtk/GtkWindow.html
+* https://developer.gnome.org/gtk-tutorial/2.90/x386.html
+
