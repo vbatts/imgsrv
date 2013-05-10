@@ -25,17 +25,20 @@ func main() {
 	w.SetBorderWidth(10)
 	w.Show()
 
+	vb := gtk.NewVBox(false, 0)
+
 	f := gtk.NewFileChooserButton("Select File", gtk.FILE_CHOOSER_ACTION_OPEN)
-	w.Add(f.AsWidget())
+	vb.PackEnd(f.AsWidget(), false, false, 0)
 	f.Show()
 
 	a := Action{"Hello World!\n"}
-
 	b := gtk.NewButtonWithLabel("Quit")
 	b.Connect("clicked", (*Action).Quit, &a)
 	b.ConnectNoi("clicked", (*gtk.Widget).Destroy, w.AsWidget())
-	w.Add(b.AsWidget())
+	vb.PackEnd(b.AsWidget(), false, false, 0)
 	b.Show()
+
+	w.Add(vb.AsWidget())
 
 	gtk.Main()
 }
