@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/client"
 	"github.com/vbatts/imgsrv/util"
 	"labix.org/v2/mgo"
@@ -161,12 +162,12 @@ func init() {
 
 }
 
-func loadConfiguration(filename string) (c Config) {
+func loadConfiguration(filename string) (c config.Config) {
 	//log.Printf("Attempting to load config file: %s", filename)
-	c, err := ReadConfigFile(filename)
+	c, err := config.ReadConfigFile(filename)
 	if err != nil {
 		//log.Println(err)
-		return Config{}
+		return config.Config{}
 	}
 
 	cRunAsServer := c.GetBool("server")
