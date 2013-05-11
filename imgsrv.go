@@ -102,7 +102,12 @@ func main() {
 	}
 }
 
-/* http://golang.org/doc/effective_go.html#init */
+/*
+http://golang.org/doc/effective_go.html#init
+
+TODO refactor flags and config, to assign, instead of pass by reference.
+http://play.golang.org/p/XhGqn-MOjL
+*/
 func init() {
 	flag.StringVar(&ConfigFile,
 		"config",

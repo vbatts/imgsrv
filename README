@@ -41,6 +41,14 @@ then you can drop that flag out, for quicker lolzing:
   2013/02/12 13:00:29 New Image!: http://hurp.til.derp.com:7777/f/lolz.gif
 
 
+== Dependencies
+
+  go get launchpad.net/goyaml
+  go get labix.org/v2/mgo
+
+and put this imgsrv in your GOPATH,
+since it references itself.
+
 == Building
 
 Either 
