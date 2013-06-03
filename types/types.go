@@ -29,11 +29,16 @@ func (f *File) SetContentType() {
 }
 
 func (f *File) IsImage() bool {
-  f.SetContentType()
+	f.SetContentType()
 	return strings.HasPrefix(f.ContentType, "image")
 }
 
 func (f *File) IsVideo() bool {
-  f.SetContentType()
+	f.SetContentType()
 	return strings.HasPrefix(f.ContentType, "video")
+}
+
+func (f *File) IsAudio() bool {
+	f.SetContentType()
+	return strings.HasPrefix(f.ContentType, "audio")
 }

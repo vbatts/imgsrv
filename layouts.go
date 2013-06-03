@@ -138,6 +138,18 @@ var fileViewImageTemplateHTML = `
 {{end}}
 `
 
+var fileViewAudioTemplate = template.Must(template.New("file").Parse(fileViewAudioTemplateHTML))
+var fileViewAudioTemplateHTML = `
+{{if .}}
+<a href="/f/{{.Filename}}">
+<audio controls>
+  <source src="/f/{{.Filename}}" type="{{.ContentType}}">
+  Your browser does not support the video tag.
+</audio>
+</a>
+{{end}}
+`
+
 var fileViewVideoTemplate = template.Must(template.New("file").Parse(fileViewVideoTemplateHTML))
 var fileViewVideoTemplateHTML = `
 {{if .}}
@@ -238,6 +250,8 @@ func ImageViewPage(w io.Writer, file types.File) (err error) {
 
 	if file.IsImage() {
 		err = fileViewImageTemplate.Execute(w, file)
+	} else if file.IsAudio() {
+		err = fileViewAudioTemplate.Execute(w, file)
 	} else if file.IsVideo() {
 		err = fileViewVideoTemplate.Execute(w, file)
 	} else {
