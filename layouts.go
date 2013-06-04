@@ -65,6 +65,34 @@ var tailTemplateHTML = `
 </html>
 `
 
+var formDeleteFileTemplate = template.Must(template.New("formDeleteFile").Parse(formDeleteFileTemplateHTML))
+var formDeleteFileTemplateHTML = `
+<div class="span9">
+<div class="hero-unit">
+  <h3>Get file from URL</h3>
+{{if .}}
+<table>
+<tr>
+<b>Are you sure?</b>
+</tr>
+<br/>
+<tr>
+<td>
+<a href="/v/{{.}}">no!</a>
+<br/>
+<a href="/f/{{.}}?delete=true&confirm=true">yes! delete!</a>
+</td>
+</tr>
+</table>
+{{else}}
+<p>
+<b>ERROR: No File provided!</b>
+</p>
+{{end}}
+</div>{{/* hero-unit */}}
+</div>{{/* span9 */}}
+`
+
 var formGetUrlTemplate = template.Must(template.New("formGetUrl").Parse(formGetUrlTemplateHTML))
 var formGetUrlTemplateHTML = `
 <div class="span9">
@@ -180,8 +208,36 @@ var fileViewInfoTemplateHTML = `
 [size: {{.Length}}]
 <br/>
 [UploadDate: {{.Metadata.TimeStamp}}]
+<br/>
+[<a href="/f/{{.Filename}}?delete=true">Delete</a>]
 {{end}}
 `
+
+func DeleteFilePage(w io.Writer, filename string) (err error) {
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: delete"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+
+	err = formDeleteFileTemplate.Execute(w, &filename)
+	if err != nil {
+		return err
+	}
+
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
+}
 
 func UrliePage(w io.Writer) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: URLie"})

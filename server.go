@@ -27,6 +27,7 @@ func runServer(ip, port string) {
 	defer mongo_session.Close()
 
 	http.HandleFunc("/", routeRoot)
+	http.HandleFunc("/favicon.ico", routeFavIcon)
 	http.HandleFunc("/assets/", routeAssets)
 	http.HandleFunc("/upload", routeUpload)
 	http.HandleFunc("/urlie", routeGetFromUrl)
@@ -109,7 +110,7 @@ func LogRequest(r *http.Request, statusCode int) {
 		addr,
 		time.Now(),
 		r.Method,
-		r.URL.Path,
+		r.URL.String(),
 		user_agent,
 		statusCode,
 		r.ContentLength)
@@ -149,10 +150,33 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 */
 // Show a page of most recent images, and tags, and uploaders ...
 func routeFilesGET(w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	uriChunks := chunkURI(r.URL.Path)
 	if len(uriChunks) > 2 {
 		LogRequest(r, 404)
 		http.NotFound(w, r)
+		return
+	}
+
+	err = r.ParseForm()
+	if err != nil {
+		serverErr(w, r, err)
+		return
+	}
+
+	// if the Request got here by a delete request, confirm it
+	if (len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true") && (len(r.Form["confirm"]) > 0 && r.Form["confirm"][0] == "true") {
+		LogRequest(r, 200)
+		routeFilesDELETE(w, r)
+		return
+	} else if len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true" {
+		LogRequest(r, 200)
+		err = DeleteFilePage(w, uriChunks[1])
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
 		return
 	}
 
@@ -185,7 +209,6 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		}
 
 		io.Copy(w, file) // send the contents of the file in the body
-
 	} else {
 		// no filename given, show them the full listing
 		http.Redirect(w, r, "/all", 302)
@@ -316,29 +339,31 @@ func routeFilesPUT(w http.ResponseWriter, r *http.Request) {
 	// update the file by the name in the path and/or parameter?
 	// update/add keywords from the parameters
 	// look for an image in the r.Body
-	LogRequest(r, 200)
+	LogRequest(r, 418)
 }
 
 func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 	uriChunks := chunkURI(r.URL.Path)
-	if len(uriChunks) > 2 {
-		LogRequest(r, 404)
-		http.NotFound(w, r)
+	if (len(uriChunks) > 2) || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
+		LogRequest(r, 400)
+		http.Error(w, "Bad Syntax", 400)
 		return
-	} else if len(uriChunks) == 2 && len(uriChunks[1]) == 0 {
 	}
+
 	exists, err := HasFileByFilename(uriChunks[1])
 	if err != nil {
 		serverErr(w, r, err)
 		return
 	}
+
 	if exists {
 		err = gfs.Remove(uriChunks[1])
 		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-		LogRequest(r, 200)
+		LogRequest(r, 302)
+		http.Redirect(w, r, "/", 302)
 	} else {
 		LogRequest(r, 404)
 		http.NotFound(w, r)
@@ -516,6 +541,16 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	LogRequest(r, 200)
+}
+
+/*
+  GET /favicon.ico
+
+  Set an unruly cache on this path, so the browser does not constantly ask for it
+*/
+func routeFavIcon(w http.ResponseWriter, r *http.Request) {
+	LogRequest(r, 200)
+	w.Header().Set("Cache-Control", "max-age=315360000")
 }
 
 /*
