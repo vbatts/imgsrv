@@ -60,7 +60,7 @@ func initMongo() {
 
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
 	log.Printf("Error: %s", e)
-	LogRequest(r, 503)
+	util.LogRequest(r, 503)
 	fmt.Fprintf(w, "Error: %s", e)
 	http.Error(w, "Service Unavailable", 503)
 	return
@@ -89,37 +89,10 @@ func chunkURI(uri string) (chunks []string) {
 	return strings.Split(str, "/")
 }
 
-/* kindof a common log type output */
-func LogRequest(r *http.Request, statusCode int) {
-	var addr string
-	var user_agent string
-
-	user_agent = ""
-	addr = r.RemoteAddr
-
-	for k, v := range r.Header {
-		if k == "User-Agent" {
-			user_agent = strings.Join(v, " ")
-		}
-		if k == "X-Forwarded-For" {
-			addr = strings.Join(v, " ")
-		}
-	}
-
-	fmt.Printf("%s - - [%s] \"%s %s\" \"%s\" %d %d\n",
-		addr,
-		time.Now(),
-		r.Method,
-		r.URL.String(),
-		user_agent,
-		statusCode,
-		r.ContentLength)
-}
-
 func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 	uriChunks := chunkURI(r.URL.Path)
 	if len(uriChunks) > 2 {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -141,7 +114,7 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 		// no filename given, show them the full listing
 		http.Redirect(w, r, "/all", 302)
 	}
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 /*
@@ -154,7 +127,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 
 	uriChunks := chunkURI(r.URL.Path)
 	if len(uriChunks) > 2 {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -167,11 +140,11 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 
 	// if the Request got here by a delete request, confirm it
 	if (len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true") && (len(r.Form["confirm"]) > 0 && r.Form["confirm"][0] == "true") {
-		LogRequest(r, 200)
+		util.LogRequest(r, 200)
 		routeFilesDELETE(w, r)
 		return
 	} else if len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true" {
-		LogRequest(r, 200)
+		util.LogRequest(r, 200)
 		err = DeleteFilePage(w, uriChunks[1])
 		if err != nil {
 			serverErr(w, r, err)
@@ -192,7 +165,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Results for [%s] = %d", uriChunks[1], c)
 		if c == 0 {
-			LogRequest(r, 404)
+			util.LogRequest(r, 404)
 			http.NotFound(w, r)
 			return
 		}
@@ -213,7 +186,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		// no filename given, show them the full listing
 		http.Redirect(w, r, "/all", 302)
 	}
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 /*
@@ -227,7 +200,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	if len(uriChunks) > 2 &&
 		((len(uriChunks) == 2 && len(uriChunks[1]) == 0) &&
 			len(r.URL.RawQuery) == 0) {
-		LogRequest(r, 403)
+		util.LogRequest(r, 403)
 		http.Error(w, "Not Acceptable", 403)
 		return
 	}
@@ -332,20 +305,20 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, fmt.Sprintf("/f/%s\n", filename))
 	}
 
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 func routeFilesPUT(w http.ResponseWriter, r *http.Request) {
 	// update the file by the name in the path and/or parameter?
 	// update/add keywords from the parameters
 	// look for an image in the r.Body
-	LogRequest(r, 418)
+	util.LogRequest(r, 418)
 }
 
 func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 	uriChunks := chunkURI(r.URL.Path)
 	if (len(uriChunks) > 2) || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
-		LogRequest(r, 400)
+		util.LogRequest(r, 400)
 		http.Error(w, "Bad Syntax", 400)
 		return
 	}
@@ -362,10 +335,10 @@ func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-		LogRequest(r, 302)
+		util.LogRequest(r, 302)
 		http.Redirect(w, r, "/", 302)
 	} else {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 	}
 	// delete the name in the path and/or parameter?
@@ -376,7 +349,7 @@ func routeViews(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "GET":
 		routeViewsGET(w, r)
 	default:
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -393,7 +366,7 @@ func routeFiles(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "DELETE":
 		routeFilesDELETE(w, r)
 	default:
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -401,7 +374,7 @@ func routeFiles(w http.ResponseWriter, r *http.Request) {
 
 func routeRoot(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -419,12 +392,12 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error: %s", err)
 	}
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 func routeAll(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
@@ -442,7 +415,7 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("error: %s", err)
 	}
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 /*
@@ -459,7 +432,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" ||
 		len(uriChunks) > 3 ||
 		(len(uriChunks) == 3 && uriChunks[2] != "r") {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
@@ -473,7 +446,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 	if uriChunks[len(uriChunks)-1] == "r" {
 		// TODO determine how to show a random image by keyword ...
 		log.Println("random isn't built yet")
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		return
 	} else if len(uriChunks) == 2 {
 		log.Println(uriChunks[1])
@@ -492,13 +465,13 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error: %s", err)
 	}
 
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 func routeMD5s(w http.ResponseWriter, r *http.Request) {
 	uriChunks := chunkURI(r.URL.Path)
 	if r.Method != "GET" {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) != 2 {
@@ -518,29 +491,29 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error: %s", err)
 	}
 
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 // Show a page of file extensions, and allow paging by ext
 func routeExt(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
 
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 // Show a page of all the uploader's IPs, and the images
 func routeIPs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
 
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 }
 
 /*
@@ -549,7 +522,7 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
   Set an unruly cache on this path, so the browser does not constantly ask for it
 */
 func routeFavIcon(w http.ResponseWriter, r *http.Request) {
-	LogRequest(r, 200)
+	util.LogRequest(r, 200)
 	w.Header().Set("Cache-Control", "max-age=315360000")
 }
 
@@ -563,7 +536,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("error: %s", err)
 		}
-		LogRequest(r, 200)
+		util.LogRequest(r, 200)
 		return
 	}
 
@@ -599,7 +572,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 					serverErr(w, r, err)
 					return
 				} else if len(local_filename) == 0 {
-					LogRequest(r, 404)
+					util.LogRequest(r, 404)
 					http.NotFound(w, r)
 					return
 				}
@@ -650,11 +623,11 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, fmt.Sprintf("/v/%s", stored_filename), 302)
 	} else {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
-	LogRequest(r, 200) // if we make it this far, then log success
+	util.LogRequest(r, 200) // if we make it this far, then log success
 }
 
 /*
@@ -664,7 +637,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 func routeUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		// Show the upload form
-		LogRequest(r, 200) // if we make it this far, then log success
+		util.LogRequest(r, 200) // if we make it this far, then log success
 		err := UploadPage(w)
 		if err != nil {
 			log.Printf("error: %s", err)
@@ -737,11 +710,11 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, fmt.Sprintf("/v/%s", filename), 302)
 	} else {
-		LogRequest(r, 404)
+		util.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
 	}
-	LogRequest(r, 200) // if we make it this far, then log success
+	util.LogRequest(r, 200) // if we make it this far, then log success
 }
 
 func routeAssets(w http.ResponseWriter, r *http.Request) {

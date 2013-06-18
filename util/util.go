@@ -2,11 +2,13 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -52,4 +54,31 @@ func FetchFileFromURL(url string) (filename string, err error) {
 
 	// lastly, return
 	return filepath.Join(os.TempDir(), url_filename), nil
+}
+
+/* kindof a common log type output */
+func LogRequest(r *http.Request, statusCode int) {
+	var addr string
+	var user_agent string
+
+	user_agent = ""
+	addr = r.RemoteAddr
+
+	for k, v := range r.Header {
+		if k == "User-Agent" {
+			user_agent = strings.Join(v, " ")
+		}
+		if k == "X-Forwarded-For" {
+			addr = strings.Join(v, " ")
+		}
+	}
+
+	fmt.Printf("%s - - [%s] \"%s %s\" \"%s\" %d %d\n",
+		addr,
+		time.Now(),
+		r.Method,
+		r.URL.String(),
+		user_agent,
+		statusCode,
+		r.ContentLength)
 }
