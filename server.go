@@ -28,7 +28,9 @@ func runServer(ip, port string) {
 	defer mongo_session.Close()
 
 	http.HandleFunc("/", routeRoot)
-	http.HandleFunc("/favicon.ico", routeFavIcon)
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		httplog.DefaultFavIcon.ServeHTTP(w, r)
+	})
 	http.HandleFunc("/assets/", routeAssets)
 	http.HandleFunc("/upload", routeUpload)
 	http.HandleFunc("/urlie", routeGetFromUrl)
@@ -515,16 +517,6 @@ func routeIPs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httplog.LogRequest(r, 200)
-}
-
-/*
-  GET /favicon.ico
-
-  Set an unruly cache on this path, so the browser does not constantly ask for it
-*/
-func routeFavIcon(w http.ResponseWriter, r *http.Request) {
-	httplog.LogRequest(r, 200)
-	w.Header().Set("Cache-Control", "max-age=315360000")
 }
 
 /*
