@@ -14,6 +14,11 @@ var headTemplateHTML = `
 <html>
 <head>
   <link href="/assets/bootstrap.css" media="screen" rel="stylesheet" type="text/css" />
+
+  <script src="/assets/jquery.js" type="text/javascript" ></script>
+  <script src="/assets/jqud.js" type="text/javascript" ></script>
+  <script src="/assets/bootstrap.js" type="text/javascript" ></script>
+
   <title>{{.title}}</title>
 </head>
 <body>

@@ -719,20 +719,26 @@ func routeAssets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Cache-Control", "max-age=315360000")
+	w.Header().Set("Cache-Control", "max-age=315360000, public")
+	w.Header().Set("Expires", time.Now().AddDate(1, 0, 0).UTC().Format(time.RFC1123))
 
 	switch path {
 	case "bootstrap.css":
-		fmt.Fprintf(w, "%s", assets.BootstrapCss())
 		w.Header().Set("Content-Type", "text/css")
+		fmt.Fprintf(w, "%s", assets.BootstrapCss())
 	case "bootstrap.js":
+		w.Header().Set("Content-Type", "text/javascript")
 		fmt.Fprintf(w, "%s", assets.BootstrapJs())
-		w.Header().Set("Content-Type", "application/javascript")
 	case "jquery.js":
+		w.Header().Set("Content-Type", "text/javascript")
 		fmt.Fprintf(w, "%s", assets.JqueryJs())
-		w.Header().Set("Content-Type", "application/javascript")
 	case "jqud.js":
+		w.Header().Set("Content-Type", "text/javascript")
 		fmt.Fprintf(w, "%s", assets.TagCloudJs())
-		w.Header().Set("Content-Type", "application/javascript")
+	default:
+		httplog.LogRequest(r, 404)
+		http.NotFound(w, r)
+		return
 	}
+	httplog.LogRequest(r, 200) // if we make it this far, then log success
 }
