@@ -10,8 +10,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/client"
+	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/util"
 	"labix.org/v2/mgo"
 	"log"

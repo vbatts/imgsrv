@@ -720,6 +720,7 @@ func routeAssets(w http.ResponseWriter, r *http.Request) {
 	switch path {
 	case "bootstrap.css":
 		fmt.Fprint(w, bootstrapCSS)
+		w.Header().Set("Cache-Control", "max-age=315360000")
 		w.Header().Set("Content-Type", "text/css")
 	}
 }
