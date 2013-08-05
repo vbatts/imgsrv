@@ -719,10 +719,22 @@ func routeAssets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "max-age=315360000")
+
 	switch path {
 	case "bootstrap.css":
 		fmt.Fprintf(w, "%s", assets.BootstrapCss())
-		w.Header().Set("Cache-Control", "max-age=315360000")
 		w.Header().Set("Content-Type", "text/css")
+	case "bootstrap.js":
+		fmt.Fprintf(w, "%s", assets.BootstrapJs())
+		w.Header().Set("Content-Type", "application/javascript")
+	case "jquery.js":
+		fmt.Fprintf(w, "%s", assets.JqueryJs())
+		w.Header().Set("Content-Type", "application/javascript")
+	case "jqud.js":
+		fmt.Fprintf(w, "%s", assets.TagCloudJs())
+		w.Header().Set("Content-Type", "application/javascript")
+  default:
+    http.ServeFile(w,r,path)
 	}
 }
