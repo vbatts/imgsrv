@@ -2,13 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/vbatts/go-httplog"
-	"github.com/vbatts/imgsrv/hash"
-	"github.com/vbatts/imgsrv/types"
-	"github.com/vbatts/imgsrv/util"
 	"io"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"log"
 	"mime"
 	"net/http"
@@ -16,6 +10,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/vbatts/go-httplog"
+	"github.com/vbatts/imgsrv/assets"
+	"github.com/vbatts/imgsrv/hash"
+	"github.com/vbatts/imgsrv/types"
+	"github.com/vbatts/imgsrv/util"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
 )
 
 var defaultPageLimit int = 25
@@ -69,7 +71,7 @@ func serverErr(w http.ResponseWriter, r *http.Request, e error) {
 	return
 }
 
-/* return a <a href/> for a given filename 
+/* return a <a href/> for a given filename
    and root is the relavtive base of the explicit link.
 */
 func linkToFile(root string, filename string) (html string) {
@@ -719,7 +721,7 @@ func routeAssets(w http.ResponseWriter, r *http.Request) {
 
 	switch path {
 	case "bootstrap.css":
-		fmt.Fprint(w, bootstrapCSS)
+		fmt.Fprintf(w, "%s", assets.BootstrapCss())
 		w.Header().Set("Cache-Control", "max-age=315360000")
 		w.Header().Set("Content-Type", "text/css")
 	}
