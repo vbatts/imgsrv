@@ -1,7 +1,7 @@
 package main
 
 /*
- Fun Times. This is to serve as a single utility that 
+ Fun Times. This is to serve as a single utility that
  * can be an image server, that stores into a mongo backend,
  OR
  * the client side tool that pushes/pulls images to the running server.
