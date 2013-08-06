@@ -1,4 +1,4 @@
-package main
+package dbutil
 
 import (
 	"github.com/vbatts/imgsrv/hash"
@@ -7,24 +7,26 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
-/* gfs is a *mgo.GridFS defined in imgsrv.go */
+type Util struct {
+	Gfs *mgo.GridFS
+}
 
-func GetFileByFilename(filename string) (this_file types.File, err error) {
-	err = gfs.Find(bson.M{"filename": filename}).One(&this_file)
+func (u Util) GetFileByFilename(filename string) (this_file types.File, err error) {
+	err = u.Gfs.Find(bson.M{"filename": filename}).One(&this_file)
 	if err != nil {
 		return this_file, err
 	}
 	return this_file, nil
 }
 
-func GetFileRandom() (this_file types.File, err error) {
+func (u Util) GetFileRandom() (this_file types.File, err error) {
 	r := hash.Rand64()
-	err = gfs.Find(bson.M{"random": bson.M{"$gt": r}}).One(&this_file)
+	err = u.Gfs.Find(bson.M{"random": bson.M{"$gt": r}}).One(&this_file)
 	if err != nil {
 		return this_file, err
 	}
 	if len(this_file.Md5) == 0 {
-		err = gfs.Find(bson.M{"random": bson.M{"$lt": r}}).One(&this_file)
+		err = u.Gfs.Find(bson.M{"random": bson.M{"$lt": r}}).One(&this_file)
 	}
 	if err != nil {
 		return this_file, err
@@ -33,8 +35,8 @@ func GetFileRandom() (this_file types.File, err error) {
 }
 
 /* Check whether this types.File filename is on Mongo */
-func HasFileByFilename(filename string) (exists bool, err error) {
-	c, err := gfs.Find(bson.M{"filename": filename}).Count()
+func (u Util) HasFileByFilename(filename string) (exists bool, err error) {
+	c, err := u.Gfs.Find(bson.M{"filename": filename}).Count()
 	if err != nil {
 		return false, err
 	}
@@ -42,8 +44,8 @@ func HasFileByFilename(filename string) (exists bool, err error) {
 	return exists, nil
 }
 
-func HasFileByMd5(md5 string) (exists bool, err error) {
-	c, err := gfs.Find(bson.M{"md5": md5}).Count()
+func (u Util) HasFileByMd5(md5 string) (exists bool, err error) {
+	c, err := u.Gfs.Find(bson.M{"md5": md5}).Count()
 	if err != nil {
 		return false, err
 	}
@@ -51,8 +53,8 @@ func HasFileByMd5(md5 string) (exists bool, err error) {
 	return exists, nil
 }
 
-func HasFileByKeyword(keyword string) (exists bool, err error) {
-	c, err := gfs.Find(bson.M{"metadata": bson.M{"keywords": keyword}}).Count()
+func (u Util) HasFileByKeyword(keyword string) (exists bool, err error) {
+	c, err := u.Gfs.Find(bson.M{"metadata": bson.M{"keywords": keyword}}).Count()
 	if err != nil {
 		return false, err
 	}
@@ -60,7 +62,10 @@ func HasFileByKeyword(keyword string) (exists bool, err error) {
 	return exists, nil
 }
 
-func GetKeywords() (kp []types.KeywordCount, err error) {
+/*
+get a list of keywords and their frequency count
+*/
+func (u Util) GetKeywords() (kp []types.KeywordCount, err error) {
 	job := &mgo.MapReduce{
 		Map: `
     function() {
@@ -85,7 +90,7 @@ func GetKeywords() (kp []types.KeywordCount, err error) {
     }
     `,
 	}
-	if _, err := gfs.Find(nil).MapReduce(job, &kp); err != nil {
+	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
 		return kp, err
 	}
 	return kp, nil

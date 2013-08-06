@@ -69,7 +69,7 @@ func main() {
 		log.Println(file)
 
 	} else {
-    // we're pushing up a file
+		// we're pushing up a file
 
 		if len(DefaultConfig.RemoteHost) == 0 {
 			log.Println("Please provide a remotehost!")

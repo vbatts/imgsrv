@@ -13,29 +13,30 @@ import (
 
 	"github.com/vbatts/go-httplog"
 	"github.com/vbatts/imgsrv/assets"
+	"github.com/vbatts/imgsrv/config"
+	"github.com/vbatts/imgsrv/dbutil"
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
 	"github.com/vbatts/imgsrv/util"
-	"github.com/vbatts/imgsrv/config"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
 
 var (
-  defaultPageLimit int = 25
-  serverConfig config.Config
+	defaultPageLimit int = 25
+	serverConfig     config.Config
 
 	mongo_session *mgo.Session  // FIXME make this not global
 	images_db     *mgo.Database // FIXME make this not global
 	gfs           *mgo.GridFS   // FIXME make this not global
-
+	du            dbutil.Util
 )
 
 /*
 Run as the file/image server
 */
 func runServer(c *config.Config) {
-  serverConfig = *c
+	serverConfig = *c
 
 	initMongo()
 	defer mongo_session.Close()
@@ -55,7 +56,7 @@ func runServer(c *config.Config) {
 	http.HandleFunc("/ext/", routeExt)
 	http.HandleFunc("/md5/", routeMD5s)
 
-  addr := fmt.Sprintf("%s:%s", c.Ip, c.Port)
+	addr := fmt.Sprintf("%s:%s", c.Ip, c.Port)
 	log.Printf("Serving on %s ...", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
@@ -73,6 +74,7 @@ func initMongo() {
 		}
 	}
 	gfs = images_db.GridFS("fs")
+	du.Gfs = gfs
 }
 
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
@@ -266,7 +268,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	exists, err := HasFileByFilename(filename)
+	exists, err := du.HasFileByFilename(filename)
 	if err == nil && !exists {
 		file, err := gfs.Create(filename)
 		defer file.Close()
@@ -340,7 +342,7 @@ func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := HasFileByFilename(uriChunks[1])
+	exists, err := du.HasFileByFilename(uriChunks[1])
 	if err != nil {
 		serverErr(w, r, err)
 		return
@@ -455,7 +457,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 	} else if len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
 		// Path: /k/
 		// show a tag cloud!
-		kc, err := GetKeywords()
+		kc, err := du.GetKeywords()
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -602,7 +604,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
 		}
-		exists, err := HasFileByFilename(filepath.Base(local_filename))
+		exists, err := du.HasFileByFilename(filepath.Base(local_filename))
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -691,7 +693,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 
 		filehdr := r.MultipartForm.File["filename"][0]
 		filename := filehdr.Filename
-		exists, err := HasFileByFilename(filename)
+		exists, err := du.HasFileByFilename(filename)
 		if err != nil {
 			serverErr(w, r, err)
 			return

@@ -45,10 +45,20 @@ var navbarTemplateHTML = `
             <li><a href="/urlie">URLie</a></li>
             <li><a href="/all">All</a></li>
           </ul>
-        </div>
-      </div>
-    </div>
-  </div>
+          <div class="dropdown nav pull-right">
+            <a role="button" data-toggle="dropdown" href="#">Other<b class="caret"></b></a>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+              <li><a href="/k/">Keywords</a></li>
+              <li><a href="/ext/">File ext</a></li>
+              <li><a href="/md5/">MD5s</a></li>
+              <li><a href="/ip/">IPs</a></li>
+            </ul>
+          </div> <!-- dropdown -->
+        </div> <!-- nav-collapse -->
+      </div> <!-- container-fluid -->
+    </div> <!-- navbar-inner -->
+  </div> <!-- navbar top -->
+  <script>$('.dropdown-toggle').dropdown()</script>
 
 `
 var containerBeginTemplate = template.Must(template.New("containerBegin").Parse(containerBeginTemplateHTML))
@@ -84,9 +94,9 @@ var formDeleteFileTemplateHTML = `
 <br/>
 <tr>
 <td>
-<a href="/v/{{.}}">no!</a>
+<a role="button" href="/v/{{.}}">no!</a>
 <br/>
-<a href="/f/{{.}}?delete=true&confirm=true">yes! delete!</a>
+<a role="button" href="/f/{{.}}?delete=true&confirm=true">yes! delete!</a>
 </td>
 </tr>
 </table>
