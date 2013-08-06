@@ -1,12 +1,13 @@
-
-== Overview
+Overview
+========
 
 Initially, I just wanted a server that I could upload images to, and quickly
 serve back. While it's mostly that, it is the client and server side tooling.
 
 The files are stored in mongoDB, using its GridFS.
 
-== Usage
+Usage
+-----
 
 Server side
 For a basic start, make sure mongo is running on the localhost, and run:
@@ -41,7 +42,8 @@ then you can drop that flag out, for quicker lolzing:
   2013/02/12 13:00:29 New Image!: http://hurp.til.derp.com:7777/f/lolz.gif
 
 
-== Dependencies
+Dependencies
+------------
 
   go get launchpad.net/goyaml
   go get labix.org/v2/mgo
@@ -49,7 +51,8 @@ then you can drop that flag out, for quicker lolzing:
 and put this imgsrv in your GOPATH,
 since it references itself.
 
-== Building
+Building
+--------
 
 Either 
 
