@@ -2,6 +2,7 @@ imgsrv
 ======
 
 [![go v1.1.1](http://b.repl.ca/v1/go-v1.1.1-blue.png)]()
+[![mongoDB v2.4](http://b.repl.ca/v1/mongo-v2.4-green.png)]()
 [![license MIT](http://b.repl.ca/v1/license-MIT-red.png)]()
 
 Overview
