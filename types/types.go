@@ -44,10 +44,9 @@ func (f *File) IsAudio() bool {
 }
 
 /*
-Structure used for collecting the keyword usage for the tag cloud
+Structure used for collecting values from mongo for a tag cloud
 */
-type KeywordCount struct {
-	Id       string "_id"
+type IdCount struct {
+	Id    string "_id"
 	Value int
 }
-

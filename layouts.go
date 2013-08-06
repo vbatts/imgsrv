@@ -51,7 +51,6 @@ var navbarTemplateHTML = `
               <li><a href="/k/">Keywords</a></li>
               <li><a href="/ext/">File ext</a></li>
               <li><a href="/md5/">MD5s</a></li>
-              <li><a href="/ip/">IPs</a></li>
             </ul>
           </div> <!-- dropdown -->
         </div> <!-- nav-collapse -->
@@ -178,7 +177,7 @@ var listTemplateHTML = `
 var tagcloudTemplate = template.Must(template.New("tagcloud").Parse(tagcloudTemplateHTML))
 var tagcloudTemplateHTML = `
 {{if .}}
-<div id="keywordTagCloud">
+<div id="tagCloud">
 {{range .}}
 <a href="/k/{{.Id}}" rel="{{.Value}}">{{.Id}}</a>
 {{end}}
@@ -393,7 +392,7 @@ func ListFilesPage(w io.Writer, files []types.File) (err error) {
 	return
 }
 
-func ListKeywordsPage(w io.Writer, kc []types.KeywordCount) (err error) {
+func ListTagCloudPage(w io.Writer, ic []types.IdCount) (err error) {
 	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
 	if err != nil {
 		return err
@@ -408,7 +407,7 @@ func ListKeywordsPage(w io.Writer, kc []types.KeywordCount) (err error) {
 	}
 
 	// main context of this page
-	err = tagcloudTemplate.Execute(w, kc)
+	err = tagcloudTemplate.Execute(w, ic)
 	if err != nil {
 		return err
 	}

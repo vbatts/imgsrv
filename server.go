@@ -52,9 +52,9 @@ func runServer(c *config.Config) {
 	http.HandleFunc("/f/", routeFiles)
 	http.HandleFunc("/v/", routeViews)
 	http.HandleFunc("/k/", routeKeywords)
-	http.HandleFunc("/ip/", routeIPs)
-	http.HandleFunc("/ext/", routeExt)
 	http.HandleFunc("/md5/", routeMD5s)
+	http.HandleFunc("/ext/", routeExt)
+	http.HandleFunc("/ip/", routeIPs)
 
 	addr := fmt.Sprintf("%s:%s", c.Ip, c.Port)
 	log.Printf("Serving on %s ...", addr)
@@ -119,7 +119,7 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
 		var file types.File
-		err := gfs.Find(bson.M{"filename": uriChunks[1]}).One(&file)
+		err := gfs.Find(bson.M{"filename": strings.ToLower(uriChunks[1])}).One(&file)
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -157,6 +157,8 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+  filename := strings.ToLower(uriChunks[1])
+
 	// if the Request got here by a delete request, confirm it
 	if (len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true") && (len(r.Form["confirm"]) > 0 && r.Form["confirm"][0] == "true") {
 		httplog.LogRequest(r, 200)
@@ -164,7 +166,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true" {
 		httplog.LogRequest(r, 200)
-		err = DeleteFilePage(w, uriChunks[1])
+		err = DeleteFilePage(w, filename)
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -172,9 +174,9 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
-		log.Printf("Searching for [%s] ...", uriChunks[1])
-		query := gfs.Find(bson.M{"filename": uriChunks[1]})
+	if len(uriChunks) == 2 && len(filename) > 0 {
+		log.Printf("Searching for [%s] ...", filename)
+		query := gfs.Find(bson.M{"filename": filename})
 
 		c, err := query.Count()
 		// preliminary checks, if they've passed an image name
@@ -182,19 +184,19 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-		log.Printf("Results for [%s] = %d", uriChunks[1], c)
+		log.Printf("Results for [%s] = %d", filename, c)
 		if c == 0 {
 			httplog.LogRequest(r, 404)
 			http.NotFound(w, r)
 			return
 		}
 
-		ext := filepath.Ext(uriChunks[1])
+		ext := filepath.Ext(filename)
 		w.Header().Set("Content-Type", mime.TypeByExtension(ext))
 		w.Header().Set("Cache-Control", "max-age=315360000")
 		w.WriteHeader(http.StatusOK)
 
-		file, err := gfs.Open(uriChunks[1])
+		file, err := gfs.Open(filename)
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -233,7 +235,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 
 	filename = r.FormValue("filename")
 	if len(filename) == 0 && len(uriChunks) == 2 && len(uriChunks[1]) != 0 {
-		filename = uriChunks[1]
+		filename = strings.ToLower(uriChunks[1])
 	}
 	log.Printf("%s\n", filename)
 
@@ -462,7 +464,7 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 			serverErr(w, r, err)
 			return
 		}
-		err = ListKeywordsPage(w, kc)
+		err = ListTagCloudPage(w, kc)
 		if err != nil {
 			serverErr(w, r, err)
 		}
@@ -506,8 +508,16 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) != 2 {
-		// they didn't give an MD5, re-route
-		routeRoot(w, r)
+    // Path: /md5/
+		kc, err := du.GetKeywords()
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		err = ListTagCloudPage(w, kc)
+		if err != nil {
+			serverErr(w, r, err)
+		}
 		return
 	}
 
@@ -604,7 +614,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
 		}
-		exists, err := du.HasFileByFilename(filepath.Base(local_filename))
+		exists, err := du.HasFileByFilename(filepath.Base(strings.ToLower(local_filename)))
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -618,7 +628,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			stored_filename = filepath.Base(local_filename)
 		}
 
-		file, err := gfs.Create(stored_filename)
+		file, err := gfs.Create(strings.ToLower(stored_filename))
 		defer file.Close()
 		if err != nil {
 			serverErr(w, r, err)

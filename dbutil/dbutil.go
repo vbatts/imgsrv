@@ -65,7 +65,7 @@ func (u Util) HasFileByKeyword(keyword string) (exists bool, err error) {
 /*
 get a list of keywords and their frequency count
 */
-func (u Util) GetKeywords() (kp []types.KeywordCount, err error) {
+func (u Util) GetKeywords() (kp []types.IdCount, err error) {
 	job := &mgo.MapReduce{
 		Map: `
     function() {
