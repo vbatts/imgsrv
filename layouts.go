@@ -191,7 +191,7 @@ $.fn.tagcloud.defaults = {
 };
 
 $(function () {
-  $('#keywordTagCloud a').tagcloud();
+  $('#tagCloud a').tagcloud();
 });
 </script>
 `
