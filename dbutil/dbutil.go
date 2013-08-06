@@ -63,6 +63,39 @@ func (u Util) HasFileByKeyword(keyword string) (exists bool, err error) {
 }
 
 /*
+get a list of file extensions and their frequency count
+*/
+func (u Util) GetExtensions() (kp []types.IdCount, err error) {
+	job := &mgo.MapReduce{
+		Map: `
+    function() {
+        if (!this.filename) {
+          return;
+        }
+
+        s = this.filename.split(".")
+        ext = s[s.length - 1] // get the last segment of the split
+        emit(ext,1);
+    }
+    `,
+		Reduce: `
+    function(previous, current) {
+      var count = 0;
+
+      for (index in current) {
+        count += current[index];
+      }
+
+      return count;
+    }
+    `,
+	}
+	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
+		return kp, err
+	}
+	return kp, nil
+}
+/*
 get a list of keywords and their frequency count
 */
 func (u Util) GetKeywords() (kp []types.IdCount, err error) {

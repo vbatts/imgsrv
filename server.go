@@ -486,13 +486,13 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
 	}
 
-	var files []types.File
+  files := []types.File{}
 	err := iter.All(&files)
 	if err != nil {
 		serverErr(w, r, err)
 		return
 	}
-	log.Println(len(files))
+  log.Printf("collected %d files", len(files))
 	err = ListFilesPage(w, files)
 	if err != nil {
 		log.Printf("error: %s", err)
@@ -521,7 +521,7 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var files []types.File
+  files := []types.File{}
 	err := gfs.Find(bson.M{"md5": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -535,12 +535,51 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 	httplog.LogRequest(r, 200)
 }
 
-// Show a page of file extensions, and allow paging by ext
+/*
+  GET /ext/
+  GET /ext/:name
+  GET /ext/:name/r
+
+  Show a page of file extensions, and allow paging by ext
+  If /ext/name/r then show a random image by keyword name
+  Otherwise 404
+*/
 func routeExt(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	uriChunks := chunkURI(r.URL.Path)
+	if r.Method != "GET" ||
+		len(uriChunks) > 3 ||
+		(len(uriChunks) == 3 && uriChunks[2] != "r") {
 		httplog.LogRequest(r, 404)
 		http.NotFound(w, r)
 		return
+	} else if len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
+    // Path: /ext/
+    // tag cloud of extensions used
+		ic, err := du.GetExtensions()
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+    log.Printf("ext: %#v", ic)
+		err = ListTagCloudPage(w, ic)
+		if err != nil {
+			serverErr(w, r, err)
+		}
+		return
+	}
+
+  ext := strings.ToLower(uriChunks[1])
+  ext_pat := fmt.Sprintf("/%s$/", ext)
+  files := []types.File{}
+	err := gfs.Find(bson.M{"filename": ext_pat}).Sort("-metadata.timestamp").All(&files)
+	if err != nil {
+		serverErr(w, r, err)
+		return
+	}
+  log.Printf("collected %d files, with ext %s", len(files), ext)
+	err = ListFilesPage(w, files)
+	if err != nil {
+		log.Printf("error: %s", err)
 	}
 
 	httplog.LogRequest(r, 200)
