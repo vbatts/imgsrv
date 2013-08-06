@@ -16,15 +16,26 @@ import (
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
 	"github.com/vbatts/imgsrv/util"
+	"github.com/vbatts/imgsrv/config"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
 
-var defaultPageLimit int = 25
+var (
+  defaultPageLimit int = 25
+  serverConfig config.Config
 
-/* Run as the image server */
-func runServer(ip, port string) {
-	var addr = fmt.Sprintf("%s:%s", ip, port)
+	mongo_session *mgo.Session  // FIXME make this not global
+	images_db     *mgo.Database // FIXME make this not global
+	gfs           *mgo.GridFS   // FIXME make this not global
+
+)
+
+/*
+Run as the file/image server
+*/
+func runServer(c *config.Config) {
+  serverConfig = *c
 
 	initMongo()
 	defer mongo_session.Close()
@@ -44,18 +55,19 @@ func runServer(ip, port string) {
 	http.HandleFunc("/ext/", routeExt)
 	http.HandleFunc("/md5/", routeMD5s)
 
+  addr := fmt.Sprintf("%s:%s", c.Ip, c.Port)
 	log.Printf("Serving on %s ...", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
 func initMongo() {
-	mongo_session, err := mgo.Dial(MongoHost)
+	mongo_session, err := mgo.Dial(serverConfig.MongoHost)
 	if err != nil {
 		log.Panic(err)
 	}
-	images_db = mongo_session.DB(MongoDB)
-	if len(MongoUsername) > 0 && len(MongoPassword) > 0 {
-		err = images_db.Login(MongoUsername, MongoPassword)
+	images_db = mongo_session.DB(serverConfig.MongoDB)
+	if len(serverConfig.MongoUsername) > 0 && len(serverConfig.MongoPassword) > 0 {
+		err = images_db.Login(serverConfig.MongoUsername, serverConfig.MongoPassword)
 		if err != nil {
 			log.Panic(err)
 		}

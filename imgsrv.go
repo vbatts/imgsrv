@@ -10,69 +10,68 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/vbatts/imgsrv/client"
-	"github.com/vbatts/imgsrv/config"
-	"github.com/vbatts/imgsrv/util"
-	"labix.org/v2/mgo"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/vbatts/imgsrv/client"
+	"github.com/vbatts/imgsrv/config"
+	"github.com/vbatts/imgsrv/util"
 )
 
 var (
 	ConfigFile = fmt.Sprintf("%s/.imgsrv.yaml", os.Getenv("HOME"))
 
-	DefaultRunAsServer = false
-	RunAsServer        = DefaultRunAsServer
+	DefaultConfig = &config.Config{
+		Server:        false,
+		Ip:            "0.0.0.0",
+		Port:          "7777",
+		MongoHost:     "localhost",
+		MongoDB:       "filesrv",
+		MongoUsername: "",
+		MongoPassword: "",
+		RemoteHost:    "",
+	}
 
-	DefaultServerIP      = "0.0.0.0"
-	ServerIP             = DefaultServerIP
-	DefaultServerPort    = "7777"
-	ServerPort           = DefaultServerPort
-	DefaultMongoHost     = "localhost"
-	MongoHost            = DefaultMongoHost
-	DefaultMongoDB       = "filesrv"
-	MongoDB              = DefaultMongoDB
-	DefaultMongoUsername = ""
-	MongoUsername        = DefaultMongoUsername
-	DefaultMongoPassword = ""
-	MongoPassword        = DefaultMongoPassword
-
-	mongo_session *mgo.Session
-	images_db     *mgo.Database
-	gfs           *mgo.GridFS
-
-	DefaultRemoteHost = ""
-	RemoteHost        = DefaultRemoteHost
-	PutFile           = ""
-	FetchUrl          = ""
-	FileKeywords      = ""
+	PutFile      = ""
+	FetchUrl     = ""
+	FileKeywords = ""
 )
 
 func main() {
 	flag.Parse()
 	for _, arg := range flag.Args() {
-		// What to do with these floating args ...
+		// TODO What to do with these floating args ...
+		//      Assume they're files and upload them?
 		log.Printf("%s", arg)
 	}
 
 	// loads either default or flag specified config
 	// to override variables
-	loadConfiguration(ConfigFile)
+	if c, err := config.ReadConfigFile(ConfigFile); err == nil {
+		DefaultConfig.Merge(c)
+	}
 
-	if len(FetchUrl) > 0 {
+	if DefaultConfig.Server {
+		// Run the server!
+
+		runServer(DefaultConfig)
+
+	} else if len(FetchUrl) > 0 {
+		// not sure that this ought to be exposed in the client tool
+
 		file, err := util.FetchFileFromURL(FetchUrl)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 		log.Println(file)
-	} else if RunAsServer {
-		log.Printf("%s", ServerIP)
-		runServer(ServerIP, ServerPort)
+
 	} else {
-		if len(RemoteHost) == 0 {
+    // we're pushing up a file
+
+		if len(DefaultConfig.RemoteHost) == 0 {
 			log.Println("Please provide a remotehost!")
 			return
 		}
@@ -87,7 +86,7 @@ func main() {
 		} else {
 			log.Println("WARN: you didn't provide any keywords :-(")
 		}
-		url, err := url.Parse(RemoteHost + "/v/" + queryParams)
+		url, err := url.Parse(DefaultConfig.RemoteHost + "/v/" + queryParams)
 		if err != nil {
 			log.Println(err)
 			return
@@ -98,7 +97,7 @@ func main() {
 			log.Println(err)
 			return
 		}
-		log.Printf("New Image!: %s%s\n", RemoteHost, url_path)
+		log.Printf("New Image!: %s%s\n", DefaultConfig.RemoteHost, url_path)
 	}
 }
 
@@ -115,35 +114,35 @@ func init() {
 		"Provide alternate configuration file")
 
 	/* Server-side */
-	flag.BoolVar(&RunAsServer,
+	flag.BoolVar(&DefaultConfig.Server,
 		"server",
-		RunAsServer,
+		DefaultConfig.Server,
 		"Run as an image server (defaults to client-side)")
-	flag.StringVar(&ServerIP,
+	flag.StringVar(&DefaultConfig.Ip,
 		"ip",
-		ServerIP,
+		DefaultConfig.Ip,
 		"IP to bind to (if running as a server)('ip' in the config)")
-	flag.StringVar(&ServerPort,
+	flag.StringVar(&DefaultConfig.Port,
 		"port",
-		ServerPort,
+		DefaultConfig.Port,
 		"Port to listen on (if running as a server)('port' in the config)")
 
 	/* MongoDB settings */
-	flag.StringVar(&MongoHost,
+	flag.StringVar(&DefaultConfig.MongoHost,
 		"mongo-host",
-		MongoHost,
+		DefaultConfig.MongoHost,
 		"Mongo Host to connect to ('mongohost' in the config)")
-	flag.StringVar(&MongoDB,
+	flag.StringVar(&DefaultConfig.MongoDB,
 		"mongo-db",
-		MongoDB,
+		DefaultConfig.MongoDB,
 		"Mongo db to connect to ('mongodb' in the config)")
-	flag.StringVar(&MongoUsername,
+	flag.StringVar(&DefaultConfig.MongoUsername,
 		"mongo-username",
-		MongoUsername,
+		DefaultConfig.MongoUsername,
 		"Mongo username to auth with (if needed) ('mongousername' in the config)")
-	flag.StringVar(&MongoPassword,
+	flag.StringVar(&DefaultConfig.MongoPassword,
 		"mongo-password",
-		MongoPassword,
+		DefaultConfig.MongoPassword,
 		"Mongo password to auth with (if needed) ('mongopassword' in the config)")
 
 	/* Client-side */
@@ -152,9 +151,9 @@ func init() {
 		FetchUrl,
 		"Just fetch the file from this url")
 
-	flag.StringVar(&RemoteHost,
+	flag.StringVar(&DefaultConfig.RemoteHost,
 		"remotehost",
-		RemoteHost,
+		DefaultConfig.RemoteHost,
 		"Remote host to get/put files on ('remotehost' in the config)")
 	flag.StringVar(&PutFile,
 		"put",
@@ -165,51 +164,4 @@ func init() {
 		FileKeywords,
 		"Keywords to associate with file. (comma delimited) (needs -put)")
 
-}
-
-func loadConfiguration(filename string) (c config.Config) {
-	//log.Printf("Attempting to load config file: %s", filename)
-	c, err := config.ReadConfigFile(filename)
-	if err != nil {
-		//log.Println(err)
-		return config.Config{}
-	}
-
-	cRunAsServer := c.GetBool("server")
-	cServerIp := c.GetString("ip")
-	cServerPort := c.GetString("port")
-	cMongoHost := c.GetString("mongohost")
-	cMongoDB := c.GetString("mongodb")
-	cMongoUsername := c.GetString("mongousername")
-	cMongoPassword := c.GetString("mongopassword")
-	cRemoteHost := c.GetString("remotehost")
-
-	// Only set variables from config file,
-	// if they weren't passed as flags
-	if DefaultRunAsServer == RunAsServer && cRunAsServer {
-		RunAsServer = cRunAsServer
-	}
-	if DefaultServerIP == ServerIP && len(cServerIp) > 0 {
-		ServerIP = cServerIp
-	}
-	if DefaultServerPort == ServerPort && len(cServerPort) > 0 {
-		ServerPort = cServerPort
-	}
-	if DefaultMongoHost == MongoHost && len(cMongoHost) > 0 {
-		MongoHost = cMongoHost
-	}
-	if DefaultMongoDB == MongoDB && len(cMongoDB) > 0 {
-		MongoDB = cMongoDB
-	}
-	if DefaultMongoUsername == MongoUsername && len(cMongoUsername) > 0 {
-		MongoUsername = cMongoUsername
-	}
-	if DefaultMongoPassword == MongoPassword && len(cMongoPassword) > 0 {
-		MongoPassword = cMongoPassword
-	}
-	if DefaultRemoteHost == RemoteHost && len(cRemoteHost) > 0 {
-		RemoteHost = cRemoteHost
-	}
-
-	return c
 }
