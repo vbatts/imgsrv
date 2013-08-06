@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -57,4 +58,35 @@ func HasFileByKeyword(keyword string) (exists bool, err error) {
 	}
 	exists = (c > 0)
 	return exists, nil
+}
+
+func GetKeywords() (kp []types.KeywordCount, err error) {
+	job := &mgo.MapReduce{
+		Map: `
+    function() {
+        if (!this.metadata.keywords) {
+          return;
+        }
+
+        for (index in this.metadata.keywords) {
+          emit(this.metadata.keywords[index], 1);
+        }
+    }
+    `,
+		Reduce: `
+    function(previous, current) {
+      var count = 0;
+
+      for (index in current) {
+        count += current[index];
+      }
+
+      return count;
+    }
+    `,
+	}
+	if _, err := gfs.Find(nil).MapReduce(job, &kp); err != nil {
+		return kp, err
+	}
+	return kp, nil
 }

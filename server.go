@@ -441,7 +441,17 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
-		routeRoot(w, r)
+		// Path: /k/
+		// show a tag cloud!
+		kc, err := GetKeywords()
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
+		err = ListKeywordsPage(w, kc)
+		if err != nil {
+			serverErr(w, r, err)
+		}
 		return
 	}
 
@@ -449,11 +459,13 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 
 	var iter *mgo.Iter
 	if uriChunks[len(uriChunks)-1] == "r" {
+		// Path: /k/
 		// TODO determine how to show a random image by keyword ...
 		log.Println("random isn't built yet")
 		httplog.LogRequest(r, 404)
 		return
 	} else if len(uriChunks) == 2 {
+		// Path: /k/:name
 		log.Println(uriChunks[1])
 		iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
 	}

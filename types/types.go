@@ -42,3 +42,12 @@ func (f *File) IsAudio() bool {
 	f.SetContentType()
 	return strings.HasPrefix(f.ContentType, "audio")
 }
+
+/*
+Structure used for collecting the keyword usage for the tag cloud
+*/
+type KeywordCount struct {
+	Id       string "_id"
+	Value int
+}
+

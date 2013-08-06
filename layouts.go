@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/vbatts/imgsrv/types"
 	"io"
 	"text/template"
+
+	"github.com/vbatts/imgsrv/types"
 )
 
 var emptyInterface interface{}
@@ -162,6 +163,28 @@ var listTemplateHTML = `
 {{end}}
 </ul>
 {{end}}
+`
+
+var tagcloudTemplate = template.Must(template.New("tagcloud").Parse(tagcloudTemplateHTML))
+var tagcloudTemplateHTML = `
+{{if .}}
+<div id="keywordTagCloud">
+{{range .}}
+<a href="/k/{{.Id}}" rel="{{.Value}}">{{.Id}}</a>
+{{end}}
+</div>
+{{end}}
+
+<script>
+$.fn.tagcloud.defaults = {
+  size: {start: 9, end: 40, unit: 'pt'},
+  color: {start: '#007ab7', end: '#e55b00'}
+};
+
+$(function () {
+  $('#keywordTagCloud a').tagcloud();
+});
+</script>
 `
 
 var fileViewImageTemplate = template.Must(template.New("file").Parse(fileViewImageTemplateHTML))
@@ -349,6 +372,33 @@ func ListFilesPage(w io.Writer, files []types.File) (err error) {
 
 	// main context of this page
 	err = listTemplate.Execute(w, files)
+	if err != nil {
+		return err
+	}
+
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func ListKeywordsPage(w io.Writer, kc []types.KeywordCount) (err error) {
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+
+	// main context of this page
+	err = tagcloudTemplate.Execute(w, kc)
 	if err != nil {
 		return err
 	}
