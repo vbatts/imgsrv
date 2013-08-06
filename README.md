@@ -1,6 +1,9 @@
 Overview
 ========
 
+[![go v1.1.1](http://b.repl.ca/v1/go-v1.1.1-blue.png)]()
+[![license MIT](http://b.repl.ca/v1/license-MIT-red.png)]()
+
 Initially, I just wanted a server that I could upload images to, and quickly
 serve back. While it's mostly that, it is the client and server side tooling.
 
