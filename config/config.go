@@ -40,6 +40,33 @@ func (c *Config) Merge(other *Config) error {
   if other == nil {
     return nil
   }
+  if other.Server {
+    c.Server = other.Server
+  }
+  if len(other.Ip) > 0 {
+    c.Ip = other.Ip
+  }
+  if len(other.Port) > 0 {
+    c.Port = other.Port
+  }
+  if len(other.Port) > 0 {
+    c.Port = other.Port
+  }
+  if len(other.MongoHost) > 0 {
+    c.MongoHost = other.MongoHost
+  }
+  if len(other.MongoDB) > 0 {
+    c.MongoDB = other.MongoDB
+  }
+  if len(other.MongoUsername) > 0 {
+    c.MongoUsername = other.MongoUsername
+  }
+  if len(other.MongoPassword) > 0 {
+    c.MongoPassword = other.MongoPassword
+  }
+  if len(other.RemoteHost) > 0 {
+    c.RemoteHost = other.RemoteHost
+  }
   return nil
 }
 

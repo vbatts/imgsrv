@@ -86,7 +86,7 @@ func main() {
 		} else {
 			log.Println("WARN: you didn't provide any keywords :-(")
 		}
-		url, err := url.Parse(DefaultConfig.RemoteHost + "/v/" + queryParams)
+		url, err := url.Parse(DefaultConfig.RemoteHost + "/f/" + queryParams)
 		if err != nil {
 			log.Println(err)
 			return
