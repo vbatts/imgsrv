@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+  "net/url"
 	"os"
 	"path/filepath"
 )
@@ -24,4 +25,16 @@ func PutFileFromPath(host, filename string) (path string, err error) {
 		return
 	}
 	return string(bytes), nil
+}
+
+func hurr() {
+	values := make(url.Values)
+	values.Set("email", "anything@email.com")
+	values.Set("name", "bob")
+	values.Set("count", "1")
+	r, err := http.PostForm("http://example.com/form", values)
+	if err != nil {
+		return
+	}
+  _ = r
 }
