@@ -179,7 +179,7 @@ var tagcloudTemplateHTML = `
 {{if .}}
 <div id="tagCloud">
 {{range .}}
-<a href="/k/{{.Id}}" rel="{{.Value}}">{{.Id}}</a>
+<a href="/{{.Root}}/{{.Id}}" rel="{{.Value}}">{{.Id}}</a>
 {{end}}
 </div>
 {{end}}
@@ -408,6 +408,44 @@ func ListTagCloudPage(w io.Writer, ic []types.IdCount) (err error) {
 
 	// main context of this page
 	err = tagcloudTemplate.Execute(w, ic)
+	if err != nil {
+		return err
+	}
+
+	err = tailTemplate.Execute(w, map[string]string{"footer": fmt.Sprintf("Version: %s", VERSION)})
+	if err != nil {
+		return err
+	}
+	return
+}
+
+func ErrorPage(w io.Writer, e error) (err error) {
+	err = headTemplate.Execute(w, map[string]string{"title": "FileSrv :: ERROR"})
+	if err != nil {
+		return err
+	}
+	err = navbarTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+	err = containerBeginTemplate.Execute(w, nil)
+	if err != nil {
+		return err
+	}
+
+	// main context of this page
+	err = template.Must(template.New("serverError").Parse(`
+  {{if .}}
+<div class="span9">
+  <div class="hero-unit">
+    <h3>ERROR!</h3>
+    <div class="error">
+      {{.Error()}}
+    </div>
+  </div> {{/* hero-unit */}}
+</div> {{/* span9 */}}
+  {{end}}
+  `)).Execute(w, e)
 	if err != nil {
 		return err
 	}

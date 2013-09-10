@@ -49,4 +49,5 @@ Structure used for collecting values from mongo for a tag cloud
 type IdCount struct {
 	Id    string "_id"
 	Value int
+	Root  string
 }

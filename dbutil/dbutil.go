@@ -93,8 +93,13 @@ func (u Util) GetExtensions() (kp []types.IdCount, err error) {
 	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
 		return kp, err
 	}
+	// Less than effecient, but cleanest place to put this
+	for i := range kp {
+		kp[i].Root = "ext" // for extension. Maps to /ext/
+	}
 	return kp, nil
 }
+
 /*
 get a list of keywords and their frequency count
 */
@@ -125,6 +130,10 @@ func (u Util) GetKeywords() (kp []types.IdCount, err error) {
 	}
 	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
 		return kp, err
+	}
+	// Less than effecient, but cleanest place to put this
+	for i := range kp {
+		kp[i].Root = "k" // for keyword. Maps to /k/
 	}
 	return kp, nil
 }

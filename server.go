@@ -78,10 +78,10 @@ func initMongo() {
 }
 
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
-	log.Printf("Error: %s", e)
 	httplog.LogRequest(r, 503)
-	fmt.Fprintf(w, "Error: %s", e)
-	http.Error(w, "Service Unavailable", 503)
+	log.Printf("Error: %s", e)
+	w.WriteHeader(503)
+	//ErrorPage(w, err)
 	return
 }
 
@@ -157,7 +157,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  filename := strings.ToLower(uriChunks[1])
+	filename := strings.ToLower(uriChunks[1])
 
 	// if the Request got here by a delete request, confirm it
 	if (len(r.Form["delete"]) > 0 && r.Form["delete"][0] == "true") && (len(r.Form["confirm"]) > 0 && r.Form["confirm"][0] == "true") {
@@ -486,13 +486,13 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 		iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
 	}
 
-  files := []types.File{}
+	files := []types.File{}
 	err := iter.All(&files)
 	if err != nil {
 		serverErr(w, r, err)
 		return
 	}
-  log.Printf("collected %d files", len(files))
+	log.Printf("collected %d files", len(files))
 	err = ListFilesPage(w, files)
 	if err != nil {
 		log.Printf("error: %s", err)
@@ -508,7 +508,7 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) != 2 {
-    // Path: /md5/
+		// Path: /md5/
 		kc, err := du.GetKeywords()
 		if err != nil {
 			serverErr(w, r, err)
@@ -521,7 +521,7 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  files := []types.File{}
+	files := []types.File{}
 	err := gfs.Find(bson.M{"md5": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
 	if err != nil {
 		serverErr(w, r, err)
@@ -553,14 +553,14 @@ func routeExt(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	} else if len(uriChunks) == 1 || (len(uriChunks) == 2 && len(uriChunks[1]) == 0) {
-    // Path: /ext/
-    // tag cloud of extensions used
+		// Path: /ext/
+		// tag cloud of extensions used
 		ic, err := du.GetExtensions()
 		if err != nil {
 			serverErr(w, r, err)
 			return
 		}
-    log.Printf("ext: %#v", ic)
+		log.Printf("ext: %#v", ic)
 		err = ListTagCloudPage(w, ic)
 		if err != nil {
 			serverErr(w, r, err)
@@ -568,15 +568,15 @@ func routeExt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  ext := strings.ToLower(uriChunks[1])
-  ext_pat := fmt.Sprintf("/%s$/", ext)
-  files := []types.File{}
+	ext := strings.ToLower(uriChunks[1])
+	ext_pat := fmt.Sprintf("/%s$/", ext)
+	files := []types.File{}
 	err := gfs.Find(bson.M{"filename": ext_pat}).Sort("-metadata.timestamp").All(&files)
 	if err != nil {
 		serverErr(w, r, err)
 		return
 	}
-  log.Printf("collected %d files, with ext %s", len(files), ext)
+	log.Printf("collected %d files, with ext %s", len(files), ext)
 	err = ListFilesPage(w, files)
 	if err != nil {
 		log.Printf("error: %s", err)
@@ -750,12 +750,13 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 		if exists || useRandName {
 			ext := filepath.Ext(filename)
 			str := hash.GetSmallHash()
-			filename = fmt.Sprintf("%s%s", str, ext)
+			filename = strings.ToLower(fmt.Sprintf("%s%s", str, ext))
 		}
 
 		file, err := gfs.Create(filename)
 		defer file.Close()
 		if err != nil {
+			log.Printf("Failed to create on gfs: %s", err)
 			serverErr(w, r, err)
 			return
 		}
@@ -763,11 +764,12 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 
 		multiFile, err := filehdr.Open()
 		if err != nil {
-			log.Println(err)
+			log.Printf("Failed to open from MultipartForm: %s", err)
 			return
 		}
 		n, err := io.Copy(file, multiFile)
 		if err != nil {
+			log.Printf("Failed copy from MultipartForm to gfs: %s", err)
 			serverErr(w, r, err)
 			return
 		}
