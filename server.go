@@ -569,9 +569,9 @@ func routeExt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ext := strings.ToLower(uriChunks[1])
-	ext_pat := fmt.Sprintf("/%s$/", ext)
+	ext_pat := fmt.Sprintf("%s$", ext)
 	files := []types.File{}
-	err := gfs.Find(bson.M{"filename": ext_pat}).Sort("-metadata.timestamp").All(&files)
+  err := gfs.Find(bson.M{"filename": bson.M{ "$regex": ext_pat, "$options": "i"}}).Sort("-metadata.timestamp").All(&files)
 	if err != nil {
 		serverErr(w, r, err)
 		return
