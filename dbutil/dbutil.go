@@ -5,10 +5,39 @@ import (
 	"github.com/vbatts/imgsrv/types"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+  "strings"
 )
 
 type Util struct {
 	Gfs *mgo.GridFS
+}
+
+func (u Util) Create(filename string) (file *mgo.GridFile, err error) {
+		return u.Gfs.Create(strings.ToLower(filename))
+}
+
+/*
+Find files by their MD5 checksum
+*/
+func (u Util) FindFilesByMd5(md5 string) (files []types.File, err error) {
+	err = u.Gfs.Find(bson.M{"md5": md5}).Sort("-metadata.timestamp").All(&files)
+  return files, err
+}
+
+/*
+match for file name
+*/
+func (u Util) FindFilesByName(filename string) (files []types.File, err error) {
+  err = u.Gfs.Find(bson.M{"filename": filename}).Sort("-metadata.timestamp").All(&files)
+  return files, err
+}
+
+/*
+Case-insensitive pattern match for file name
+*/
+func (u Util) FindFilesByPatt(filename_pat string) (files []types.File, err error) {
+  err = u.Gfs.Find(bson.M{"filename": bson.M{ "$regex": filename_pat, "$options": "i"}}).Sort("-metadata.timestamp").All(&files)
+  return files, err
 }
 
 func (u Util) GetFileByFilename(filename string) (this_file types.File, err error) {

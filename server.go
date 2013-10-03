@@ -521,8 +521,7 @@ func routeMD5s(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files := []types.File{}
-	err := gfs.Find(bson.M{"md5": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
+	files, err := du.FindFilesByMd5(uriChunks[1])
 	if err != nil {
 		serverErr(w, r, err)
 		return
@@ -570,8 +569,7 @@ func routeExt(w http.ResponseWriter, r *http.Request) {
 
 	ext := strings.ToLower(uriChunks[1])
 	ext_pat := fmt.Sprintf("%s$", ext)
-	files := []types.File{}
-  err := gfs.Find(bson.M{"filename": bson.M{ "$regex": ext_pat, "$options": "i"}}).Sort("-metadata.timestamp").All(&files)
+	files, err := du.FindFilesByPatt(ext_pat)
 	if err != nil {
 		serverErr(w, r, err)
 		return
@@ -667,7 +665,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 			stored_filename = filepath.Base(local_filename)
 		}
 
-		file, err := gfs.Create(strings.ToLower(stored_filename))
+		file, err := du.Create(stored_filename)
 		defer file.Close()
 		if err != nil {
 			serverErr(w, r, err)
