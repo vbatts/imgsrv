@@ -36,8 +36,17 @@ Run as the file/image server
 func runServer(c *config.Config) {
 	serverConfig = *c
 
-	initMongo()
-	defer mongo_session.Close()
+	du = dbutil.Util{
+		Seed:   serverConfig.MongoHost,
+		User:   serverConfig.MongoUsername,
+		Pass:   serverConfig.MongoPassword,
+		DbName: serverConfig.MongoDbName,
+	}
+  err := du.Init()
+  if err != nil {
+    log.Fatal(err)
+  }
+	defer du.Close() // TODO this ought to catch a signal to cleanup
 
 	http.HandleFunc("/", routeRoot)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +73,7 @@ func initMongo() {
 	if err != nil {
 		log.Panic(err)
 	}
-	images_db = mongo_session.DB(serverConfig.MongoDB)
+	images_db = mongo_session.DB(serverConfig.MongoDbName)
 	if len(serverConfig.MongoUsername) > 0 && len(serverConfig.MongoPassword) > 0 {
 		err = images_db.Login(serverConfig.MongoUsername, serverConfig.MongoPassword)
 		if err != nil {

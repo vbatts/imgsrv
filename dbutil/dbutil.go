@@ -8,8 +8,45 @@ import (
 	"strings"
 )
 
+const (
+	DEFAULT_DB_NAME = "filesrv"
+)
+
 type Util struct {
-	Gfs *mgo.GridFS
+	Seed    string // mongo host seed to Dial into
+	User    string // mongo credentials, if needed
+	Pass    string // mongo credentials, if needed
+	DbName  string // mongo database name, if needed
+	Session *mgo.Session
+	FileDb  *mgo.Database
+	Gfs     *mgo.GridFS
+}
+
+func (u *Util) Init() error {
+	var err error
+	u.Session, err = mgo.Dial(u.Seed)
+	if err != nil {
+		return err
+	}
+
+	if len(u.DbName) > 0 {
+		u.FileDb = u.Session.DB(u.DbName)
+	} else {
+		u.FileDb = u.Session.DB(DEFAULT_DB_NAME)
+	}
+
+	if len(u.User) > 0 && len(u.Pass) > 0 {
+		err = u.FileDb.Login(u.User, u.Pass)
+		if err != nil {
+			return err
+		}
+	}
+	u.Gfs = u.FileDb.GridFS("fs")
+	return nil
+}
+
+func (u Util) Close() {
+	u.Session.Close()
 }
 
 /*
@@ -71,6 +108,7 @@ Get all the files.
 pass -1 for all files
 */
 func (u Util) GetFiles(limit int) (files []types.File, err error) {
+	//files = []types.File{}
 	if limit == -1 {
 		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").Limit(limit).All(&files)
 	} else {

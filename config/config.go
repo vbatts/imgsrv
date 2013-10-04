@@ -10,7 +10,7 @@ type Config struct {
 	Ip            string // Bind address, if different than 0.0.0.0 (server)
 	Port          string // listen port, if different than '7777' (server)
 	MongoHost     string // mongoDB host, if different than 'localhost' (server)
-	MongoDB       string // mongoDB db name, if different than 'filesrv' (server)
+	MongoDbName   string // mongoDB db name, if different than 'filesrv' (server)
 	MongoUsername string // mongoDB username, if any (server)
 	MongoPassword string // mongoDB password, if any (server)
 
@@ -37,37 +37,37 @@ func (c Config) GetString(option string) (value string) {
 }
 
 func (c *Config) Merge(other *Config) error {
-  if other == nil {
-    return nil
-  }
-  if other.Server {
-    c.Server = other.Server
-  }
-  if len(other.Ip) > 0 {
-    c.Ip = other.Ip
-  }
-  if len(other.Port) > 0 {
-    c.Port = other.Port
-  }
-  if len(other.Port) > 0 {
-    c.Port = other.Port
-  }
-  if len(other.MongoHost) > 0 {
-    c.MongoHost = other.MongoHost
-  }
-  if len(other.MongoDB) > 0 {
-    c.MongoDB = other.MongoDB
-  }
-  if len(other.MongoUsername) > 0 {
-    c.MongoUsername = other.MongoUsername
-  }
-  if len(other.MongoPassword) > 0 {
-    c.MongoPassword = other.MongoPassword
-  }
-  if len(other.RemoteHost) > 0 {
-    c.RemoteHost = other.RemoteHost
-  }
-  return nil
+	if other == nil {
+		return nil
+	}
+	if other.Server {
+		c.Server = other.Server
+	}
+	if len(other.Ip) > 0 {
+		c.Ip = other.Ip
+	}
+	if len(other.Port) > 0 {
+		c.Port = other.Port
+	}
+	if len(other.Port) > 0 {
+		c.Port = other.Port
+	}
+	if len(other.MongoHost) > 0 {
+		c.MongoHost = other.MongoHost
+	}
+	if len(other.MongoDbName) > 0 {
+		c.MongoDbName = other.MongoDbName
+	}
+	if len(other.MongoUsername) > 0 {
+		c.MongoUsername = other.MongoUsername
+	}
+	if len(other.MongoPassword) > 0 {
+		c.MongoPassword = other.MongoPassword
+	}
+	if len(other.RemoteHost) > 0 {
+		c.RemoteHost = other.RemoteHost
+	}
+	return nil
 }
 
 // Given a filename to a YAML file, unmarshal it, and return a Config

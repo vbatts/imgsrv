@@ -28,7 +28,7 @@ var (
 		Ip:            "0.0.0.0",
 		Port:          "7777",
 		MongoHost:     "localhost",
-		MongoDB:       "filesrv",
+		MongoDbName:   "filesrv",
 		MongoUsername: "",
 		MongoPassword: "",
 		RemoteHost:    "",
@@ -132,9 +132,9 @@ func init() {
 		"mongo-host",
 		DefaultConfig.MongoHost,
 		"Mongo Host to connect to ('mongohost' in the config)")
-	flag.StringVar(&DefaultConfig.MongoDB,
+	flag.StringVar(&DefaultConfig.MongoDbName,
 		"mongo-db",
-		DefaultConfig.MongoDB,
+		DefaultConfig.MongoDbName,
 		"Mongo db to connect to ('mongodb' in the config)")
 	flag.StringVar(&DefaultConfig.MongoUsername,
 		"mongo-username",
