@@ -18,16 +18,12 @@ import (
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
 	"github.com/vbatts/imgsrv/util"
-	"labix.org/v2/mgo"
 )
 
 var (
 	defaultPageLimit int = 25
 	serverConfig     config.Config
-
-	mongo_session *mgo.Session  // FIXME make this not global
-	images_db     *mgo.Database // FIXME make this not global
-	du            dbutil.Util
+	du               dbutil.Util
 )
 
 /*
@@ -43,10 +39,10 @@ func runServer(c *config.Config) {
 		DbName: serverConfig.MongoDbName,
 	}
 
-  err := du.Init()
-  if err != nil {
-    log.Fatal(err)
-  }
+	err := du.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer du.Close() // TODO this ought to catch a signal to cleanup
 
 	http.HandleFunc("/", routeRoot)
