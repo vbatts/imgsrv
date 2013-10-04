@@ -19,7 +19,6 @@ import (
 	"github.com/vbatts/imgsrv/types"
 	"github.com/vbatts/imgsrv/util"
 	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 var (
@@ -28,7 +27,6 @@ var (
 
 	mongo_session *mgo.Session  // FIXME make this not global
 	images_db     *mgo.Database // FIXME make this not global
-	gfs           *mgo.GridFS   // FIXME make this not global
 	du            dbutil.Util
 )
 
@@ -73,8 +71,7 @@ func initMongo() {
 			log.Panic(err)
 		}
 	}
-	gfs = images_db.GridFS("fs")
-	du.Gfs = gfs
+	du.Gfs = images_db.GridFS("fs")
 }
 
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
@@ -118,8 +115,7 @@ func routeViewsGET(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	if len(uriChunks) == 2 && len(uriChunks[1]) > 0 {
-		var file types.File
-		err := gfs.Find(bson.M{"filename": strings.ToLower(uriChunks[1])}).One(&file)
+		file, err := du.GetFileByFilename(uriChunks[1])
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -176,9 +172,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 
 	if len(uriChunks) == 2 && len(filename) > 0 {
 		log.Printf("Searching for [%s] ...", filename)
-		query := gfs.Find(bson.M{"filename": filename})
-
-		c, err := query.Count()
+		c, err := du.CountFiles(filename)
 		// preliminary checks, if they've passed an image name
 		if err != nil {
 			serverErr(w, r, err)
@@ -196,7 +190,7 @@ func routeFilesGET(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=315360000")
 		w.WriteHeader(http.StatusOK)
 
-		file, err := gfs.Open(filename)
+		file, err := du.Open(filename)
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -254,9 +248,11 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 		v := r.FormValue(word)
 		if len(v) > 0 {
 			if strings.Contains(v, ",") {
-				info.Keywords = append(info.Keywords, strings.Split(v, ",")...)
+				for _, word := range strings.Split(v, ",") {
+					info.Keywords = append(info.Keywords, strings.Trim(word, " "))
+				}
 			} else {
-				info.Keywords = append(info.Keywords, v)
+				info.Keywords = append(info.Keywords, strings.Trim(v, " "))
 			}
 		}
 	}
@@ -272,7 +268,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 
 	exists, err := du.HasFileByFilename(filename)
 	if err == nil && !exists {
-		file, err := gfs.Create(filename)
+		file, err := du.Create(filename)
 		defer file.Close()
 		if err != nil {
 			serverErr(w, r, err)
@@ -297,7 +293,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	} else if exists {
 		if r.Method == "PUT" {
 			// TODO nothing will get here presently. Workflow needs more review
-			file, err := gfs.Open(filename)
+			file, err := du.Open(filename)
 			defer file.Close()
 			if err != nil {
 				serverErr(w, r, err)
@@ -351,7 +347,7 @@ func routeFilesDELETE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists {
-		err = gfs.Remove(uriChunks[1])
+		err = du.Remove(uriChunks[1])
 		if err != nil {
 			serverErr(w, r, err)
 			return
@@ -402,9 +398,8 @@ func routeRoot(w http.ResponseWriter, r *http.Request) {
 	// Show a page of most recent images, and tags, and uploaders ...
 
 	w.Header().Set("Content-Type", "text/html")
-	//iter := gfs.Find(bson.M{"uploadDate": bson.M{"$gt": time.Now().Add(-time.Hour)}}).Limit(defaultPageLimit).Iter()
 	var files []types.File
-	err := gfs.Find(nil).Sort("-metadata.timestamp").Limit(defaultPageLimit).All(&files)
+	files, err := du.GetFiles(defaultPageLimit)
 	if err != nil {
 		serverErr(w, r, err)
 		return
@@ -427,7 +422,7 @@ func routeAll(w http.ResponseWriter, r *http.Request) {
 
 	// Show a page of all the images
 	var files []types.File
-	err := gfs.Find(nil).Sort("-metadata.timestamp").All(&files)
+	files, err := du.GetFiles(-1)
 	if err != nil {
 		serverErr(w, r, err)
 		return
@@ -473,25 +468,28 @@ func routeKeywords(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("K: %s (%d)", uriChunks, len(uriChunks))
 
-	var iter *mgo.Iter
 	if uriChunks[len(uriChunks)-1] == "r" {
 		// Path: /k/
 		// TODO determine how to show a random image by keyword ...
 		log.Println("random isn't built yet")
 		httplog.LogRequest(r, 404)
 		return
-	} else if len(uriChunks) == 2 {
-		// Path: /k/:name
-		log.Println(uriChunks[1])
-		iter = gfs.Find(bson.M{"metadata.keywords": uriChunks[1]}).Sort("-metadata.timestamp").Limit(defaultPageLimit).Iter()
 	}
 
-	files := []types.File{}
-	err := iter.All(&files)
-	if err != nil {
-		serverErr(w, r, err)
-		return
+	var (
+		files []types.File
+		err   error
+	)
+	if len(uriChunks) == 2 {
+		// Path: /k/:name
+		log.Println(uriChunks[1])
+		files, err = du.FindFilesByKeyword(uriChunks[1])
+		if err != nil {
+			serverErr(w, r, err)
+			return
+		}
 	}
+
 	log.Printf("collected %d files", len(files))
 	err = ListFilesPage(w, files)
 	if err != nil {
@@ -751,7 +749,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			filename = strings.ToLower(fmt.Sprintf("%s%s", str, ext))
 		}
 
-		file, err := gfs.Create(filename)
+		file, err := du.Create(filename)
 		defer file.Close()
 		if err != nil {
 			log.Printf("Failed to create on gfs: %s", err)
