@@ -42,6 +42,7 @@ func runServer(c *config.Config) {
 		Pass:   serverConfig.MongoPassword,
 		DbName: serverConfig.MongoDbName,
 	}
+
   err := du.Init()
   if err != nil {
     log.Fatal(err)
@@ -66,21 +67,6 @@ func runServer(c *config.Config) {
 	addr := fmt.Sprintf("%s:%s", c.Ip, c.Port)
 	log.Printf("Serving on %s ...", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
-}
-
-func initMongo() {
-	mongo_session, err := mgo.Dial(serverConfig.MongoHost)
-	if err != nil {
-		log.Panic(err)
-	}
-	images_db = mongo_session.DB(serverConfig.MongoDbName)
-	if len(serverConfig.MongoUsername) > 0 && len(serverConfig.MongoPassword) > 0 {
-		err = images_db.Login(serverConfig.MongoUsername, serverConfig.MongoPassword)
-		if err != nil {
-			log.Panic(err)
-		}
-	}
-	du.Gfs = images_db.GridFS("fs")
 }
 
 func serverErr(w http.ResponseWriter, r *http.Request, e error) {
