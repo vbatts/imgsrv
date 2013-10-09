@@ -13,7 +13,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/vbatts/imgsrv/client"
 	"github.com/vbatts/imgsrv/config"
@@ -79,25 +78,24 @@ func main() {
 			log.Println("Please provide files to be uploaded!")
 			return
 		}
-		_, basename := filepath.Split(PutFile)
-		queryParams := "?filename=" + basename
+    params := map[string]string{}
 		if len(FileKeywords) > 0 {
-			queryParams = queryParams + "&keywords=" + FileKeywords
+      params["keywords"] = FileKeywords
 		} else {
 			log.Println("WARN: you didn't provide any keywords :-(")
 		}
-		url, err := url.Parse(DefaultConfig.RemoteHost + "/f/" + queryParams)
+		url, err := url.Parse(DefaultConfig.RemoteHost + "/f/")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		log.Printf("POSTing: %s\n", url.String())
-		url_path, err := client.PutFileFromPath(url.String(), PutFile)
+		//log.Printf("POSTing: %s\n", url.String())
+		url_path, err := client.PutFileFromPath(url.String(), PutFile, params)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		log.Printf("New Image!: %s%s\n", DefaultConfig.RemoteHost, url_path)
+		log.Printf("uploaded: %s%s\n", DefaultConfig.RemoteHost, url_path)
 	}
 }
 

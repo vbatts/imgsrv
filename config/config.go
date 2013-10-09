@@ -64,7 +64,7 @@ func (c *Config) Merge(other *Config) error {
 	if len(other.MongoPassword) > 0 {
 		c.MongoPassword = other.MongoPassword
 	}
-	if len(other.RemoteHost) > 0 {
+	if len(other.RemoteHost) > 0 && len(c.RemoteHost) == 0 {
 		c.RemoteHost = other.RemoteHost
 	}
 	return nil

@@ -219,6 +219,18 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 		TimeStamp: time.Now(),
 	}
 
+	err := r.ParseMultipartForm(maxBytes)
+	if err != nil {
+		serverErr(w, r, err)
+		return
+	}
+
+  // Keep it DRY?
+	if r.MultipartForm != nil {
+		routeUpload(w, r)
+    return
+	}
+
 	filename = r.FormValue("filename")
 	if len(filename) == 0 && len(uriChunks) == 2 && len(uriChunks[1]) != 0 {
 		filename = strings.ToLower(uriChunks[1])
@@ -728,6 +740,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		log.Printf("%#v", r.MultipartForm.File)
 		filehdr := r.MultipartForm.File["filename"][0]
 		filename := filehdr.Filename
 		exists, err := du.HasFileByFilename(filename)
