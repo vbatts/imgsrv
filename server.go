@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	defaultPageLimit int = 25
+	defaultPageLimit int   = 25
+	maxBytes         int64 = 1024 * 512
 	serverConfig     config.Config
 	du               dbutil.Util
 )
@@ -710,7 +711,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// handle the form posting to this route
-		err := r.ParseMultipartForm(1024 * 5)
+		err := r.ParseMultipartForm(maxBytes)
 		if err != nil {
 			serverErr(w, r, err)
 			return
