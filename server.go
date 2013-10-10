@@ -729,12 +729,15 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		useRandName := false
+		returnUrl := false
 		log.Printf("%q", r.MultipartForm.Value)
 		for k, v := range r.MultipartForm.Value {
 			if k == "keywords" {
 				info.Keywords = append(info.Keywords, strings.Split(v[0], ",")...)
 			} else if k == "rand" {
 				useRandName = true
+			} else if k == "returnUrl" {
+				returnUrl = true
 			} else {
 				log.Printf("WARN: not sure what to do with param [%s = %s]", k, v)
 			}
@@ -781,6 +784,10 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 				n)
 		}
 
+    if returnUrl {
+		  fmt.Fprintf(w, "/v/%s", filename)
+      return
+    }
 		http.Redirect(w, r, fmt.Sprintf("/v/%s", filename), 302)
 	} else {
 		httplog.LogRequest(r, 404)

@@ -89,13 +89,12 @@ func main() {
 			log.Println(err)
 			return
 		}
-		//log.Printf("POSTing: %s\n", url.String())
 		url_path, err := client.PutFileFromPath(url.String(), PutFile, params)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		log.Printf("uploaded: %s%s\n", DefaultConfig.RemoteHost, url_path)
+		fmt.Printf("%s%s\n", DefaultConfig.RemoteHost, url_path)
 	}
 }
 
