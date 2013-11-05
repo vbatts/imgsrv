@@ -2,12 +2,17 @@ package hash
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
-	"hash/adler32"
 	"io"
 	"math/rand"
+	"strings"
 	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func Rand64() int64 {
 	return rand.Int63()
@@ -31,7 +36,7 @@ func GetMd5FromBytes(blob []byte) (sum []byte) {
 
 /* get a small, decently unique hash */
 func GetSmallHash() (small_hash string) {
-	h := adler32.New()
-	io.WriteString(h, fmt.Sprintf("%d", time.Now().Unix()))
-	return fmt.Sprintf("%X", h.Sum(nil))
+	h := sha256.New()
+	io.WriteString(h, fmt.Sprintf("%d%d", time.Now().UnixNano(), Rand64()))
+	return strings.ToLower(fmt.Sprintf("%X", h.Sum(nil)[0:9]))
 }

@@ -3,6 +3,7 @@ package hash
 import (
 	"fmt"
 	"testing"
+  "sort"
 )
 
 func TestRand64(t *testing.T) {
@@ -36,4 +37,15 @@ func TestMd5String(t *testing.T) {
 }
 
 func TestHash(t *testing.T) {
+  seen := []string{}
+  for i := 0; i < 10000; i++ {
+    h := GetSmallHash()
+    j := sort.SearchStrings(seen, h)
+    if len(seen) != 0 && j < len(seen) && h == seen[j] {
+      t.Errorf("there is a non-unique hash after %d attempts [%s and %s]", i, h, seen[j])
+    } else {
+      seen = append(seen, h)
+      sort.Strings(seen)
+    }
+  }
 }
