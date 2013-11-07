@@ -37,6 +37,6 @@ func GetMd5FromBytes(blob []byte) (sum []byte) {
 /* get a small, decently unique hash */
 func GetSmallHash() (small_hash string) {
 	h := sha256.New()
-	io.WriteString(h, fmt.Sprintf("%d%d", time.Now().UnixNano(), Rand64()))
-	return strings.ToLower(fmt.Sprintf("%X", h.Sum(nil)[0:9]))
+	io.WriteString(h, fmt.Sprintf("%d%d", Rand64()))
+	return strings.ToLower(fmt.Sprintf("%X", h.Sum(nil)[0:4]))
 }
