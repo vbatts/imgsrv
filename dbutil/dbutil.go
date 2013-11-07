@@ -110,9 +110,9 @@ pass -1 for all files
 func (u Util) GetFiles(limit int) (files []types.File, err error) {
 	//files = []types.File{}
 	if limit == -1 {
-		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").Limit(limit).All(&files)
-	} else {
 		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").All(&files)
+	} else {
+		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").Limit(limit).All(&files)
 	}
 	return files, err
 }
