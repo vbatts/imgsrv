@@ -1,8 +1,0 @@
-package: github.com/vbatts/imgsrv
-import:
-- package: github.com/gorilla/mux
-- package: github.com/vbatts/go-httplog
-- package: labix.org/v2/mgo
-  subpackages:
-  - bson
-- package: launchpad.net/goyaml
