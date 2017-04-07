@@ -16,6 +16,7 @@ import (
 	"github.com/vbatts/imgsrv/assets"
 	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/dbutil"
+	_ "github.com/vbatts/imgsrv/dbutil/etcd"
 	_ "github.com/vbatts/imgsrv/dbutil/mongo"
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"

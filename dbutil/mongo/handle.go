@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	dbutil.Handles["mongo"] = &mongoHandle{}
+	dbutil.Handles["mongo"] = &mHandle{}
 }
 
 const defaultDbName = "filesrv"
@@ -23,18 +23,17 @@ type dbConfig struct {
 	DbName string // mongo database name, if needed
 }
 
-type mongoHandle struct {
+type mHandle struct {
 	config  dbConfig
 	Session *mgo.Session
 	FileDb  *mgo.Database
 	Gfs     *mgo.GridFS
 }
 
-func (h *mongoHandle) Init(config []byte, err error) error {
+func (h *mHandle) Init(config []byte, err error) error {
 	if err != nil {
 		return err
 	}
-
 	h.config = dbConfig{}
 	if err := json.Unmarshal(config, &h.config); err != nil {
 		return err
@@ -61,54 +60,54 @@ func (h *mongoHandle) Init(config []byte, err error) error {
 	return nil
 }
 
-func (h mongoHandle) Close() error {
+func (h mHandle) Close() error {
 	h.Session.Close()
 	return nil
 }
 
 // pass through for GridFs
-func (h mongoHandle) Open(filename string) (file dbutil.File, err error) {
+func (h mHandle) Open(filename string) (file dbutil.File, err error) {
 	return h.Gfs.Open(strings.ToLower(filename))
 }
 
 // pass through for GridFs
-func (h mongoHandle) Create(filename string) (file dbutil.File, err error) {
+func (h mHandle) Create(filename string) (file dbutil.File, err error) {
 	return h.Gfs.Create(strings.ToLower(filename))
 }
 
 // pass through for GridFs
-func (h mongoHandle) Remove(filename string) (err error) {
+func (h mHandle) Remove(filename string) (err error) {
 	return h.Gfs.Remove(strings.ToLower(filename))
 }
 
 // Find files by their MD5 checksum
-func (h mongoHandle) FindFilesByMd5(md5 string) (files []types.File, err error) {
+func (h mHandle) FindFilesByMd5(md5 string) (files []types.File, err error) {
 	err = h.Gfs.Find(bson.M{"md5": md5}).Sort("-metadata.timestamp").All(&files)
 	return files, err
 }
 
 // match for file name
 // XXX this is not used
-func (h mongoHandle) FindFilesByName(filename string) (files []types.File, err error) {
+func (h mHandle) FindFilesByName(filename string) (files []types.File, err error) {
 	err = h.Gfs.Find(bson.M{"filename": filename}).Sort("-metadata.timestamp").All(&files)
 	return files, err
 }
 
 // Case-insensitive pattern match for file name
-func (h mongoHandle) FindFilesByPatt(filenamePat string) (files []types.File, err error) {
+func (h mHandle) FindFilesByPatt(filenamePat string) (files []types.File, err error) {
 	err = h.Gfs.Find(bson.M{"filename": bson.M{"$regex": filenamePat, "$options": "i"}}).Sort("-metadata.timestamp").All(&files)
 	return files, err
 }
 
 // Case-insensitive pattern match for file name
-func (h mongoHandle) FindFilesByKeyword(keyword string) (files []types.File, err error) {
+func (h mHandle) FindFilesByKeyword(keyword string) (files []types.File, err error) {
 	err = h.Gfs.Find(bson.M{"metadata.keywords": strings.ToLower(keyword)}).Sort("-metadata.timestamp").All(&files)
 	return files, err
 }
 
 // Get all the files.
 // Pass -1 for all files.
-func (h mongoHandle) GetFiles(limit int) (files []types.File, err error) {
+func (h mHandle) GetFiles(limit int) (files []types.File, err error) {
 	//files = []types.File{}
 	if limit == -1 {
 		err = h.Gfs.Find(nil).Sort("-metadata.timestamp").All(&files)
@@ -119,13 +118,13 @@ func (h mongoHandle) GetFiles(limit int) (files []types.File, err error) {
 }
 
 // Count the filename matches
-func (h mongoHandle) CountFiles(filename string) (count int, err error) {
+func (h mHandle) CountFiles(filename string) (count int, err error) {
 	query := h.Gfs.Find(bson.M{"filename": strings.ToLower(filename)})
 	return query.Count()
 }
 
 // Get one file back, by searching by file name
-func (h mongoHandle) GetFileByFilename(filename string) (thisFile types.File, err error) {
+func (h mHandle) GetFileByFilename(filename string) (thisFile types.File, err error) {
 	err = h.Gfs.Find(bson.M{"filename": strings.ToLower(filename)}).One(&thisFile)
 	if err != nil {
 		return thisFile, err
@@ -134,7 +133,7 @@ func (h mongoHandle) GetFileByFilename(filename string) (thisFile types.File, er
 }
 
 // Check whether this types.File filename is on Mongo
-func (h mongoHandle) HasFileByFilename(filename string) (exists bool, err error) {
+func (h mHandle) HasFileByFilename(filename string) (exists bool, err error) {
 	c, err := h.CountFiles(filename)
 	if err != nil {
 		return false, err
@@ -144,7 +143,7 @@ func (h mongoHandle) HasFileByFilename(filename string) (exists bool, err error)
 }
 
 // XXX this is not used
-func (h mongoHandle) HasFileByMd5(md5 string) (exists bool, err error) {
+func (h mHandle) HasFileByMd5(md5 string) (exists bool, err error) {
 	c, err := h.Gfs.Find(bson.M{"md5": md5}).Count()
 	if err != nil {
 		return false, err
@@ -154,7 +153,7 @@ func (h mongoHandle) HasFileByMd5(md5 string) (exists bool, err error) {
 }
 
 // XXX this is not used
-func (h mongoHandle) HasFileByKeyword(keyword string) (exists bool, err error) {
+func (h mHandle) HasFileByKeyword(keyword string) (exists bool, err error) {
 	c, err := h.Gfs.Find(bson.M{"metadata": bson.M{"keywords": strings.ToLower(keyword)}}).Count()
 	if err != nil {
 		return false, err
@@ -164,7 +163,7 @@ func (h mongoHandle) HasFileByKeyword(keyword string) (exists bool, err error) {
 }
 
 // get a list of file extensions and their frequency count
-func (h mongoHandle) GetExtensions() (kp []types.IdCount, err error) {
+func (h mHandle) GetExtensions() (kp []types.IdCount, err error) {
 	job := &mgo.MapReduce{
 		Map: `
     function() {
@@ -200,7 +199,7 @@ func (h mongoHandle) GetExtensions() (kp []types.IdCount, err error) {
 }
 
 // get a list of keywords and their frequency count
-func (h mongoHandle) GetKeywords() (kp []types.IdCount, err error) {
+func (h mHandle) GetKeywords() (kp []types.IdCount, err error) {
 	job := &mgo.MapReduce{
 		Map: `
     function() {
