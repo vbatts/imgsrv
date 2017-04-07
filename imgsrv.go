@@ -31,6 +31,7 @@ var (
 		MongoDbName:   "filesrv",
 		MongoUsername: "",
 		MongoPassword: "",
+		EtcdEndpoints: "http://127.0.0.1:2379",
 		RemoteHost:    "",
 	}
 
@@ -147,6 +148,13 @@ func init() {
 		"mongo-password",
 		DefaultConfig.MongoPassword,
 		"Mongo password to auth with (if needed) ('mongopassword' in the config)")
+
+	/* etcd settings */
+
+	flag.StringVar(&DefaultConfig.EtcdEndpoints,
+		"etcds-endpoints",
+		DefaultConfig.EtcdEndpoints,
+		"Etcd endpoint to use for the 'etcd' dbhandler")
 
 	/* Client-side */
 	flag.StringVar(&FetchUrl,

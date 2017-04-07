@@ -52,6 +52,12 @@ func runServer(c *config.Config) {
 			serverConfig.MongoPassword,
 			serverConfig.MongoDbName,
 		}
+	} else if serverConfig.DbHandler == "etcd" {
+		duConfig = struct {
+			Endpoints []string
+		}{
+			strings.Split(serverConfig.EtcdEndpoints, ","),
+		}
 	}
 
 	if err := du.Init(json.Marshal(duConfig)); err != nil {
@@ -228,7 +234,6 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	var filename string
 	info := types.Info{
 		Ip:        r.RemoteAddr,
-		Random:    hash.Rand64(),
 		TimeStamp: time.Now(),
 	}
 
@@ -634,7 +639,6 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 
 		info = types.Info{
 			Ip:        r.RemoteAddr,
-			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
 		}
 		log.Println(info)
@@ -731,7 +735,6 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		info := types.Info{
 			Ip:        r.RemoteAddr,
-			Random:    hash.Rand64(),
 			TimeStamp: time.Now(),
 		}
 

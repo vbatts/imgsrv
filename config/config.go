@@ -15,6 +15,7 @@ type Config struct {
 	MongoDbName   string // mongoDB db name, if different than 'filesrv' (server)
 	MongoUsername string // mongoDB username, if any (server)
 	MongoPassword string // mongoDB password, if any (server)
+	EtcdEndpoints string
 
 	RemoteHost string // imgsrv server to push files to (client)
 
