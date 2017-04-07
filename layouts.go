@@ -5,6 +5,7 @@ import (
 	"io"
 	"text/template"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/vbatts/imgsrv/types"
 )
 
@@ -234,7 +235,12 @@ var fileViewTemplateHTML = `
 {{end}}
 `
 
-var fileViewInfoTemplate = template.Must(template.New("file").Parse(fileViewInfoTemplateHTML))
+var funcs = template.FuncMap{
+	"humanBytes": humanize.Bytes,
+	"humanTime":  humanize.Time,
+}
+
+var fileViewInfoTemplate = template.Must(template.New("file").Funcs(funcs).Parse(fileViewInfoTemplateHTML))
 var fileViewInfoTemplateHTML = `
 {{if .}}
 <br/>
@@ -242,9 +248,9 @@ var fileViewInfoTemplateHTML = `
 <br/>
 [md5: <a href="/md5/{{.Md5}}">{{.Md5}}</a>]
 <br/>
-[size: {{.Length}}]
+[size: {{humanBytes .Length}}]
 <br/>
-[UploadDate: {{.Metadata.TimeStamp}}]
+[UploadDate: {{.Metadata.TimeStamp}} ({{humanTime .Metadata.TimeStamp}})]
 <br/>
 [<a href="/f/{{.Filename}}?delete=true">Delete</a>]
 {{end}}

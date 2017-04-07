@@ -19,7 +19,7 @@ type File struct {
 	Md5        string
 	ChunkSize  int
 	UploadDate time.Time
-	Length     int64
+	Length     uint64
 	Filename   string ",omitempty"
 }
 
