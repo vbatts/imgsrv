@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -45,7 +46,7 @@ func runServer(c *config.Config) {
 		serverConfig.MongoDbName,
 	}
 
-	if err := du.Init(duConfig); err != nil {
+	if err := du.Init(json.Marshal(duConfig)); err != nil {
 		log.Fatal(err)
 	}
 	defer du.Close() // TODO this ought to catch a signal to cleanup

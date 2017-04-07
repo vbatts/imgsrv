@@ -7,11 +7,11 @@ import (
 )
 
 // Handles are all the register backing Handlers
-var Handles map[string]Handler
+var Handles = map[string]Handler{}
 
 // Handler is the means of getting "files" from the backing database
 type Handler interface {
-	Init(config interface{}) error
+	Init(config []byte, err error) error
 	Close() error
 
 	Open(filename string) (File, error)
@@ -33,14 +33,38 @@ type Handler interface {
 	GetKeywords() (kp []types.IdCount, err error)
 }
 
-type MetaDataer interface {
-	GetMeta(result interface{}) (err error)
-	SetMeta(metadata interface{})
-}
-
+// File is what is stored and fetched from the backing database
 type File interface {
 	io.Reader
 	io.Writer
 	io.Closer
 	MetaDataer
+}
+
+// MetaDataer allows set/get for optional metadata
+type MetaDataer interface {
+	/*
+		GetMeta unmarshals the optional "metadata" field associated with the file into
+		the result parameter. The meaning of keys under that field is user-defined. For
+		example:
+
+			result := struct{ INode int }{}
+			err = file.GetMeta(&result)
+			if err != nil {
+				panic(err.String())
+			}
+			fmt.Printf("inode: %d\n", result.INode)
+	*/
+	GetMeta(result interface{}) (err error)
+	/*
+		SetMeta changes the optional "metadata" field associated with the file.  The
+		meaning of keys under that field is user-defined. For example:
+
+			file.SetMeta(bson.M{"inode": inode})
+
+		It is a runtime error to call this function when the file is not open for
+		writing.
+
+	*/
+	SetMeta(metadata interface{})
 }

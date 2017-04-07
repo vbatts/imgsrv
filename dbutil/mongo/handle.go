@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/vbatts/imgsrv/dbutil"
@@ -29,8 +30,15 @@ type mongoHandle struct {
 	Gfs     *mgo.GridFS
 }
 
-func (h *mongoHandle) Init(config interface{}) (err error) {
-	h.config = config.(dbConfig)
+func (h *mongoHandle) Init(config []byte, err error) error {
+	if err != nil {
+		return err
+	}
+
+	h.config = dbConfig{}
+	if err := json.Unmarshal(config, &h.config); err != nil {
+		return err
+	}
 
 	h.Session, err = mgo.Dial(h.config.Seed)
 	if err != nil {
