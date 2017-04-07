@@ -2,6 +2,7 @@ package config
 
 import (
 	"io/ioutil"
+
 	"launchpad.net/goyaml"
 )
 
@@ -9,6 +10,7 @@ type Config struct {
 	Server        bool   // Run as server, if different than false (server)
 	Ip            string // Bind address, if different than 0.0.0.0 (server)
 	Port          string // listen port, if different than '7777' (server)
+	DbHandler     string // "mongo" (server)
 	MongoHost     string // mongoDB host, if different than 'localhost' (server)
 	MongoDbName   string // mongoDB db name, if different than 'filesrv' (server)
 	MongoUsername string // mongoDB username, if any (server)
@@ -51,6 +53,9 @@ func (c *Config) Merge(other *Config) error {
 	}
 	if len(other.Port) > 0 {
 		c.Port = other.Port
+	}
+	if len(other.DbHandler) > 0 {
+		c.DbHandler = other.DbHandler
 	}
 	if len(other.MongoHost) > 0 {
 		c.MongoHost = other.MongoHost

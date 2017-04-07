@@ -26,6 +26,7 @@ var (
 		Server:        false,
 		Ip:            "0.0.0.0",
 		Port:          "7777",
+		DbHandler:     "mongo",
 		MongoHost:     "localhost",
 		MongoDbName:   "filesrv",
 		MongoUsername: "",
@@ -78,9 +79,9 @@ func main() {
 			log.Println("Please provide files to be uploaded!")
 			return
 		}
-    params := map[string]string{}
+		params := map[string]string{}
 		if len(FileKeywords) > 0 {
-      params["keywords"] = FileKeywords
+			params["keywords"] = FileKeywords
 		} else {
 			log.Println("WARN: you didn't provide any keywords :-(")
 		}
@@ -123,6 +124,11 @@ func init() {
 		"port",
 		DefaultConfig.Port,
 		"Port to listen on (if running as a server)('port' in the config)")
+
+	flag.StringVar(&DefaultConfig.DbHandler,
+		"dbhandler",
+		DefaultConfig.DbHandler,
+		"Database backend handler (if runnint as a server)")
 
 	/* MongoDB settings */
 	flag.StringVar(&DefaultConfig.MongoHost,

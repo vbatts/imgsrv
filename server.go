@@ -33,17 +33,24 @@ var (
 func runServer(c *config.Config) {
 	serverConfig = *c
 
-	du = dbutil.Handles["mongo"]
-	duConfig := struct {
-		Seed   string
-		User   string
-		Pass   string
-		DbName string
-	}{
-		serverConfig.MongoHost,
-		serverConfig.MongoUsername,
-		serverConfig.MongoPassword,
-		serverConfig.MongoDbName,
+	var duConfig interface{}
+	var ok bool
+	if du, ok = dbutil.Handles[serverConfig.DbHandler]; !ok {
+		log.Fatalf("DbHandler %q not found", serverConfig.DbHandler)
+	}
+
+	if serverConfig.DbHandler == "mongo" {
+		duConfig = struct {
+			Seed   string
+			User   string
+			Pass   string
+			DbName string
+		}{
+			serverConfig.MongoHost,
+			serverConfig.MongoUsername,
+			serverConfig.MongoPassword,
+			serverConfig.MongoDbName,
+		}
 	}
 
 	if err := du.Init(json.Marshal(duConfig)); err != nil {
