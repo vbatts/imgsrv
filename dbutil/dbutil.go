@@ -1,258 +1,70 @@
 package dbutil
 
 import (
-	"github.com/vbatts/imgsrv/hash"
+	"io"
+
 	"github.com/vbatts/imgsrv/types"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
-	"strings"
 )
 
-const (
-	DEFAULT_DB_NAME = "filesrv"
-)
+// Handles are all the register backing Handlers
+var Handles = map[string]Handler{}
 
-type Util struct {
-	Seed    string // mongo host seed to Dial into
-	User    string // mongo credentials, if needed
-	Pass    string // mongo credentials, if needed
-	DbName  string // mongo database name, if needed
-	Session *mgo.Session
-	FileDb  *mgo.Database
-	Gfs     *mgo.GridFS
+// Handler is the means of getting "files" from the backing database
+type Handler interface {
+	Init(config []byte, err error) error
+	Close() error
+
+	Open(filename string) (File, error)
+	Create(filename string) (File, error)
+	Remove(filename string) error
+
+	//HasFileByMd5(md5 string) (exists bool, err error)
+	//HasFileByKeyword(keyword string) (exists bool, err error)
+	HasFileByFilename(filename string) (exists bool, err error)
+	FindFilesByKeyword(keyword string) (files []types.File, err error)
+	FindFilesByMd5(md5 string) (files []types.File, err error)
+	FindFilesByPatt(filenamePat string) (files []types.File, err error)
+
+	CountFiles(filename string) (int, error)
+
+	GetFiles(limit int) (files []types.File, err error)
+	GetFileByFilename(filename string) (types.File, error)
+	GetExtensions() (kp []types.IdCount, err error)
+	GetKeywords() (kp []types.IdCount, err error)
 }
 
-func (u *Util) Init() error {
-	var err error
-	u.Session, err = mgo.Dial(u.Seed)
-	if err != nil {
-		return err
-	}
-
-	if len(u.DbName) > 0 {
-		u.FileDb = u.Session.DB(u.DbName)
-	} else {
-		u.FileDb = u.Session.DB(DEFAULT_DB_NAME)
-	}
-
-	if len(u.User) > 0 && len(u.Pass) > 0 {
-		err = u.FileDb.Login(u.User, u.Pass)
-		if err != nil {
-			return err
-		}
-	}
-	u.Gfs = u.FileDb.GridFS("fs")
-	return nil
+// File is what is stored and fetched from the backing database
+type File interface {
+	io.Reader
+	io.Writer
+	io.Closer
+	MetaDataer
 }
 
-func (u Util) Close() {
-	u.Session.Close()
-}
+// MetaDataer allows set/get for optional metadata
+type MetaDataer interface {
+	/*
+		GetMeta unmarshals the optional "metadata" field associated with the file into
+		the result parameter. The meaning of keys under that field is user-defined. For
+		example:
 
-/*
-pass through for GridFs
-*/
-func (u Util) Open(filename string) (file *mgo.GridFile, err error) {
-	return u.Gfs.Open(strings.ToLower(filename))
-}
+			result := struct{ INode int }{}
+			err = file.GetMeta(&result)
+			if err != nil {
+				panic(err.String())
+			}
+			fmt.Printf("inode: %d\n", result.INode)
+	*/
+	GetMeta(result interface{}) (err error)
+	/*
+		SetMeta changes the optional "metadata" field associated with the file.  The
+		meaning of keys under that field is user-defined. For example:
 
-/*
-pass through for GridFs
-*/
-func (u Util) Create(filename string) (file *mgo.GridFile, err error) {
-	return u.Gfs.Create(strings.ToLower(filename))
-}
+			file.SetMeta(bson.M{"inode": inode})
 
-/*
-pass through for GridFs
-*/
-func (u Util) Remove(filename string) (err error) {
-	return u.Gfs.Remove(strings.ToLower(filename))
-}
+		It is a runtime error to call this function when the file is not open for
+		writing.
 
-/*
-Find files by their MD5 checksum
-*/
-func (u Util) FindFilesByMd5(md5 string) (files []types.File, err error) {
-	err = u.Gfs.Find(bson.M{"md5": md5}).Sort("-metadata.timestamp").All(&files)
-	return files, err
-}
-
-/*
-match for file name
-*/
-func (u Util) FindFilesByName(filename string) (files []types.File, err error) {
-	err = u.Gfs.Find(bson.M{"filename": filename}).Sort("-metadata.timestamp").All(&files)
-	return files, err
-}
-
-/*
-Case-insensitive pattern match for file name
-*/
-func (u Util) FindFilesByPatt(filename_pat string) (files []types.File, err error) {
-	err = u.Gfs.Find(bson.M{"filename": bson.M{"$regex": filename_pat, "$options": "i"}}).Sort("-metadata.timestamp").All(&files)
-	return files, err
-}
-
-/*
-Case-insensitive pattern match for file name
-*/
-func (u Util) FindFilesByKeyword(keyword string) (files []types.File, err error) {
-	err = u.Gfs.Find(bson.M{"metadata.keywords": strings.ToLower(keyword)}).Sort("-metadata.timestamp").All(&files)
-	return files, err
-}
-
-/*
-Get all the files.
-
-pass -1 for all files
-*/
-func (u Util) GetFiles(limit int) (files []types.File, err error) {
-	//files = []types.File{}
-	if limit == -1 {
-		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").All(&files)
-	} else {
-		err = u.Gfs.Find(nil).Sort("-metadata.timestamp").Limit(limit).All(&files)
-	}
-	return files, err
-}
-
-/*
-Count the filename matches
-*/
-func (u Util) CountFiles(filename string) (count int, err error) {
-	query := u.Gfs.Find(bson.M{"filename": strings.ToLower(filename)})
-	return query.Count()
-}
-
-/*
-Get one file back, by searching by file name
-*/
-func (u Util) GetFileByFilename(filename string) (this_file types.File, err error) {
-	err = u.Gfs.Find(bson.M{"filename": strings.ToLower(filename)}).One(&this_file)
-	if err != nil {
-		return this_file, err
-	}
-	return this_file, nil
-}
-
-func (u Util) GetFileRandom() (this_file types.File, err error) {
-	r := hash.Rand64()
-	err = u.Gfs.Find(bson.M{"random": bson.M{"$gt": r}}).One(&this_file)
-	if err != nil {
-		return this_file, err
-	}
-	if len(this_file.Md5) == 0 {
-		err = u.Gfs.Find(bson.M{"random": bson.M{"$lt": r}}).One(&this_file)
-	}
-	if err != nil {
-		return this_file, err
-	}
-	return this_file, nil
-}
-
-/*
-Check whether this types.File filename is on Mongo
-*/
-func (u Util) HasFileByFilename(filename string) (exists bool, err error) {
-	c, err := u.CountFiles(filename)
-	if err != nil {
-		return false, err
-	}
-	exists = (c > 0)
-	return exists, nil
-}
-
-func (u Util) HasFileByMd5(md5 string) (exists bool, err error) {
-	c, err := u.Gfs.Find(bson.M{"md5": md5}).Count()
-	if err != nil {
-		return false, err
-	}
-	exists = (c > 0)
-	return exists, nil
-}
-
-func (u Util) HasFileByKeyword(keyword string) (exists bool, err error) {
-	c, err := u.Gfs.Find(bson.M{"metadata": bson.M{"keywords": strings.ToLower(keyword)}}).Count()
-	if err != nil {
-		return false, err
-	}
-	exists = (c > 0)
-	return exists, nil
-}
-
-/*
-get a list of file extensions and their frequency count
-*/
-func (u Util) GetExtensions() (kp []types.IdCount, err error) {
-	job := &mgo.MapReduce{
-		Map: `
-    function() {
-        if (!this.filename) {
-          return;
-        }
-
-        s = this.filename.split(".")
-        ext = s[s.length - 1] // get the last segment of the split
-        emit(ext,1);
-    }
-    `,
-		Reduce: `
-    function(previous, current) {
-      var count = 0;
-
-      for (index in current) {
-        count += current[index];
-      }
-
-      return count;
-    }
-    `,
-	}
-	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
-		return kp, err
-	}
-	// Less than effecient, but cleanest place to put this
-	for i := range kp {
-		kp[i].Root = "ext" // for extension. Maps to /ext/
-	}
-	return kp, nil
-}
-
-/*
-get a list of keywords and their frequency count
-*/
-func (u Util) GetKeywords() (kp []types.IdCount, err error) {
-	job := &mgo.MapReduce{
-		Map: `
-    function() {
-        if (!this.metadata.keywords) {
-          return;
-        }
-
-        for (index in this.metadata.keywords) {
-          emit(this.metadata.keywords[index], 1);
-        }
-    }
-    `,
-		Reduce: `
-    function(previous, current) {
-      var count = 0;
-
-      for (index in current) {
-        count += current[index];
-      }
-
-      return count;
-    }
-    `,
-	}
-	if _, err := u.Gfs.Find(nil).MapReduce(job, &kp); err != nil {
-		return kp, err
-	}
-	// Less than effecient, but cleanest place to put this
-	for i := range kp {
-		kp[i].Root = "k" // for keyword. Maps to /k/
-	}
-	return kp, nil
+	*/
+	SetMeta(metadata interface{})
 }

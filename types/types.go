@@ -15,37 +15,32 @@ type Info struct {
 }
 
 type File struct {
-	Metadata    Info ",omitempty"
-	Md5         string
-	ChunkSize   int
-	UploadDate  time.Time
-	Length      int64
-	Filename    string ",omitempty"
-	ContentType string "contentType,omitempty"
+	Metadata   Info ",omitempty"
+	Md5        string
+	ChunkSize  int
+	UploadDate time.Time
+	Length     int64
+	Filename   string ",omitempty"
 }
 
-func (f *File) SetContentType() {
-	f.ContentType = mime.TypeByExtension(filepath.Ext(f.Filename))
+// ContentType guesses the mime-type by the file's extension
+func (f *File) ContentType() string {
+	return mime.TypeByExtension(filepath.Ext(f.Filename))
 }
 
 func (f *File) IsImage() bool {
-	f.SetContentType()
-	return strings.HasPrefix(f.ContentType, "image")
+	return strings.HasPrefix(f.ContentType(), "image")
 }
 
 func (f *File) IsVideo() bool {
-	f.SetContentType()
-	return strings.HasPrefix(f.ContentType, "video")
+	return strings.HasPrefix(f.ContentType(), "video")
 }
 
 func (f *File) IsAudio() bool {
-	f.SetContentType()
-	return strings.HasPrefix(f.ContentType, "audio")
+	return strings.HasPrefix(f.ContentType(), "audio")
 }
 
-/*
-Structure used for collecting values from mongo for a tag cloud
-*/
+// IdCount structure used for collecting values for a tag cloud
 type IdCount struct {
 	Id    string "_id"
 	Value int
