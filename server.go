@@ -15,6 +15,7 @@ import (
 	"github.com/vbatts/imgsrv/assets"
 	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/dbutil"
+	_ "github.com/vbatts/imgsrv/dbutil/mongo"
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
 	"github.com/vbatts/imgsrv/util"
@@ -24,24 +25,27 @@ var (
 	defaultPageLimit int   = 25
 	maxBytes         int64 = 1024 * 512
 	serverConfig     config.Config
-	du               dbutil.Util
+	du               dbutil.Handler
 )
 
-/*
-Run as the file/image server
-*/
+// Run as the file/image server
 func runServer(c *config.Config) {
 	serverConfig = *c
 
-	du = dbutil.Util{
-		Seed:   serverConfig.MongoHost,
-		User:   serverConfig.MongoUsername,
-		Pass:   serverConfig.MongoPassword,
-		DbName: serverConfig.MongoDbName,
+	du = dbutil.Handles["mongo"]
+	duConfig := struct {
+		Seed   string
+		User   string
+		Pass   string
+		DbName string
+	}{
+		serverConfig.MongoHost,
+		serverConfig.MongoUsername,
+		serverConfig.MongoPassword,
+		serverConfig.MongoDbName,
 	}
 
-	err := du.Init()
-	if err != nil {
+	if err := du.Init(duConfig); err != nil {
 		log.Fatal(err)
 	}
 	defer du.Close() // TODO this ought to catch a signal to cleanup
@@ -225,10 +229,10 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  // Keep it DRY?
+	// Keep it DRY?
 	if r.MultipartForm != nil {
 		routeUpload(w, r)
-    return
+		return
 	}
 
 	filename = r.FormValue("filename")
@@ -784,10 +788,10 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 				n)
 		}
 
-    if returnUrl {
-		  fmt.Fprintf(w, "/v/%s", filename)
-      return
-    }
+		if returnUrl {
+			fmt.Fprintf(w, "/v/%s", filename)
+			return
+		}
 		http.Redirect(w, r, fmt.Sprintf("/v/%s", filename), 302)
 	} else {
 		httplog.LogRequest(r, 404)
