@@ -274,7 +274,7 @@ func routeFilesPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(filename) == 0 {
-		str := hash.GetSmallHash()
+		str := hash.GetSmallHash(5)
 		if len(p_ext) == 0 {
 			filename = fmt.Sprintf("%s.jpg", str)
 		} else {
@@ -673,7 +673,7 @@ func routeGetFromUrl(w http.ResponseWriter, r *http.Request) {
 
 		if exists || useRandName {
 			ext := filepath.Ext(local_filename)
-			str := hash.GetSmallHash()
+			str := hash.GetSmallHash(5)
 			stored_filename = fmt.Sprintf("%s%s", str, ext)
 		} else {
 			stored_filename = filepath.Base(local_filename)
@@ -765,7 +765,7 @@ func routeUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		if exists || useRandName {
 			ext := filepath.Ext(filename)
-			str := hash.GetSmallHash()
+			str := hash.GetSmallHash(5)
 			filename = strings.ToLower(fmt.Sprintf("%s%s", str, ext))
 		}
 
