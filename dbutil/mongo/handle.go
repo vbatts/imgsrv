@@ -59,12 +59,12 @@ func (h mongoHandle) Close() error {
 }
 
 // pass through for GridFs
-func (h mongoHandle) Open(filename string) (file *mgo.GridFile, err error) {
+func (h mongoHandle) Open(filename string) (file dbutil.File, err error) {
 	return h.Gfs.Open(strings.ToLower(filename))
 }
 
 // pass through for GridFs
-func (h mongoHandle) Create(filename string) (file *mgo.GridFile, err error) {
+func (h mongoHandle) Create(filename string) (file dbutil.File, err error) {
 	return h.Gfs.Create(strings.ToLower(filename))
 }
 

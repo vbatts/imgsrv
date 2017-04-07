@@ -1,8 +1,9 @@
 package dbutil
 
 import (
+	"io"
+
 	"github.com/vbatts/imgsrv/types"
-	"labix.org/v2/mgo"
 )
 
 // Handles are all the register backing Handlers
@@ -13,8 +14,8 @@ type Handler interface {
 	Init(config interface{}) error
 	Close() error
 
-	Open(filename string) (*mgo.GridFile, error)
-	Create(filename string) (*mgo.GridFile, error)
+	Open(filename string) (File, error)
+	Create(filename string) (File, error)
 	Remove(filename string) error
 
 	//HasFileByMd5(md5 string) (exists bool, err error)
@@ -30,4 +31,16 @@ type Handler interface {
 	GetFileByFilename(filename string) (types.File, error)
 	GetExtensions() (kp []types.IdCount, err error)
 	GetKeywords() (kp []types.IdCount, err error)
+}
+
+type MetaDataer interface {
+	GetMeta(result interface{}) (err error)
+	SetMeta(metadata interface{})
+}
+
+type File interface {
+	io.Reader
+	io.Writer
+	io.Closer
+	MetaDataer
 }
