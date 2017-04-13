@@ -1,0 +1,7 @@
+#!/bin/sh
+cd ${SRCDIR}
+export GOPATH=/usr/local
+mkdir -p ${GOPATH}/src/github.com/vbatts/
+ln -sf $(pwd) ${GOPATH}/src/github.com/vbatts/imgsrv
+go get -d -v ./...
+go install github.com/vbatts/imgsrv

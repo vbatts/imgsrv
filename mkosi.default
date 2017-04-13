@@ -1,0 +1,11 @@
+[Distribution]
+Distribution=fedora
+Release=25
+
+[Output]
+Format=tar
+Bootable=no
+
+[Packages]
+Packages=
+BuildPackages=golang git bzr
