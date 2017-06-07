@@ -8,9 +8,4 @@ RUN dnf install -y golang git bzr && \
 	go get github.com/vbatts/imgsrv && \
 	rm -rf /usr/local/src /usr/local/pkg && \
 	dnf remove -y golang git bzr
-ENTRYPOINT /usr/local/bin/imgsrv \
-	-server \
-	-mongo-host=$MONGODB_SERVICE_HOST:$MONGODB_SERVICE_PORT \
-	-mongo-db=$MONGODB_DATABASE \
-	-mongo-username=$DATABASE_USER \
-	-mongo-password=$DATABASE_PASSWORD
+ENTRYPOINT ["/usr/local/src/github.com/vbatts/imgsrv/run.sh"]
