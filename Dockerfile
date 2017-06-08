@@ -8,4 +8,4 @@ RUN dnf install -y golang git bzr && \
 	go get github.com/vbatts/imgsrv && \
 	rm -rf /usr/local/pkg && \
 	dnf remove -y golang git bzr
-ENTRYPOINT ["/usr/local/src/github.com/vbatts/imgsrv/run.sh"]
+ENTRYPOINT ["/bin/sh", "/usr/local/src/github.com/vbatts/imgsrv/run.sh"]
