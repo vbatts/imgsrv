@@ -28,7 +28,7 @@
       "stringData": {
         "database-user": "${DATABASE_USER}",
         "database-password": "${DATABASE_PASSWORD}",
-        "database-admin-password" : "${DATABASE_ADMIN_PASSWORD}"
+        "database-admin-password": "${DATABASE_ADMIN_PASSWORD}"
       }
     },
     {
@@ -147,7 +147,14 @@
       },
       "spec": {
         "strategy": {
-          "type": "Recreate"
+          "type": "Rolling",
+          "rollingPatams": {
+            "updatePeriodSeconds": 1,
+            "intervalSeconds": 1,
+            "timeoutSeconds": 600,
+            "maxUnavailable": "25%",
+            "maxSurge": "25%"
+          }
         },
         "triggers": [
           {
@@ -196,18 +203,18 @@
                   {
                     "name": "MONGODB_USER",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-user"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-user"
                       }
                     }
                   },
                   {
                     "name": "MONGODB_PASSWORD",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-password"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-password"
                       }
                     }
                   },
@@ -218,9 +225,9 @@
                   {
                     "name": "MONGODB_ADMIN_PASSWORD",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-admin-password"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-admin-password"
                       }
                     }
                   }
@@ -348,18 +355,18 @@
                   {
                     "name": "MONGODB_USER",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-user"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-user"
                       }
                     }
                   },
                   {
                     "name": "MONGODB_PASSWORD",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-password"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-password"
                       }
                     }
                   },
@@ -370,9 +377,9 @@
                   {
                     "name": "MONGODB_ADMIN_PASSWORD",
                     "valueFrom": {
-                      "secretKeyRef" : {
-                        "name" : "${NAME}",
-                        "key" : "database-admin-password"
+                      "secretKeyRef": {
+                        "name": "${NAME}",
+                        "key": "database-admin-password"
                       }
                     }
                   }
