@@ -25,7 +25,13 @@ type File struct {
 
 // ContentType guesses the mime-type by the file's extension
 func (f *File) ContentType() string {
-	return mime.TypeByExtension(filepath.Ext(f.Filename))
+	mtype := mime.TypeByExtension(filepath.Ext(f.Filename))
+	if mtype == "" {
+		if strings.HasSuffix(f.Filename, ".webm") {
+			return "video/webm; charset=binary"
+		}
+	}
+	return mtype
 }
 
 func (f *File) IsImage() bool {
@@ -33,9 +39,6 @@ func (f *File) IsImage() bool {
 }
 
 func (f *File) IsVideo() bool {
-	if strings.HasSuffix(f.Filename, ".webm") {
-		return true
-	}
 	return strings.HasPrefix(f.ContentType(), "video")
 }
 
