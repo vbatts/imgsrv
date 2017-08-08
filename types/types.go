@@ -33,6 +33,9 @@ func (f *File) IsImage() bool {
 }
 
 func (f *File) IsVideo() bool {
+	if strings.HasSuffix(f.Filename, ".webm") {
+		return true
+	}
 	return strings.HasPrefix(f.ContentType(), "video")
 }
 
