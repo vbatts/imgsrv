@@ -209,7 +209,7 @@ var fileViewAudioTemplateHTML = `
 {{if .}}
 <a href="/f/{{.Filename}}">
 <audio controls>
-  <source src="/f/{{.Filename}}" />
+  <source src="/f/{{.Filename}}" autoplay/>
   Your browser does not support the video tag.
 </audio>
 </a>
@@ -221,7 +221,7 @@ var fileViewVideoTemplateHTML = `
 {{if .}}
 <a href="/f/{{.Filename}}">
 <video width="320" height="240" controls>
-  <source src="/f/{{.Filename}}" />
+  <source src="/f/{{.Filename}}" autoplay/>
   Your browser does not support the video tag.
 </video>
 </a>
