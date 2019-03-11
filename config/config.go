@@ -3,7 +3,7 @@ package config
 import (
 	"io/ioutil"
 
-	"launchpad.net/goyaml"
+	"github.com/go-yaml/yaml"
 )
 
 type Config struct {
@@ -83,7 +83,7 @@ func ReadConfigFile(filename string) (*Config, error) {
 	}
 
 	config := Config{}
-	if err = goyaml.Unmarshal(bytes, &config); err != nil {
+	if err = yaml.Unmarshal(bytes, &config); err != nil {
 		return nil, err
 	}
 
