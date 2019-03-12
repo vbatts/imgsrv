@@ -16,6 +16,7 @@ import (
 	"github.com/vbatts/imgsrv/assets"
 	"github.com/vbatts/imgsrv/config"
 	"github.com/vbatts/imgsrv/dbutil"
+	_ "github.com/vbatts/imgsrv/dbutil/minio"
 	_ "github.com/vbatts/imgsrv/dbutil/mongo"
 	"github.com/vbatts/imgsrv/hash"
 	"github.com/vbatts/imgsrv/types"
@@ -39,7 +40,8 @@ func runServer(c *config.Config) {
 		log.Fatalf("DbHandler %q not found", serverConfig.DbHandler)
 	}
 
-	if serverConfig.DbHandler == "mongo" {
+	switch {
+	case serverConfig.DbHandler == "mongo":
 		duConfig = struct {
 			Seed   string
 			User   string
@@ -51,6 +53,7 @@ func runServer(c *config.Config) {
 			serverConfig.MongoPassword,
 			serverConfig.MongoDbName,
 		}
+	case serverConfig.DbHandler == "minio":
 	}
 
 	if err := du.Init(json.Marshal(duConfig)); err != nil {
